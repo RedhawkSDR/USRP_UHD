@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This file is protected by Copyright. Please refer to the COPYRIGHT file 
+distributed with this source distribution.
+
+This file is part of GNUHAWK.
+
+GNUHAWK is free software: you can redistribute it and/or modify is under the 
+terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+
+GNUHAWK is distributed in the hope that it will be useful, but WITHOUT ANY 
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A 
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with 
+this program.  If not, see http://www.gnu.org/licenses/.
+-->
+
+<!DOCTYPE properties PUBLIC "-//JTRS//DTD SCA V2.2.2 PRF//EN" "properties.dtd">
+<properties>
+  <simple id="DCE:cdc5ee18-7ceb-4ae6-bf4c-31f983179b4d" mode="readonly" name="device_kind" type="string">
+    <description>This specifies the device kind</description>
+    <value>FRONTEND</value>
+    <kind kindtype="configure"/>
+    <kind kindtype="allocation"/>
+    <action type="eq"/>
+  </simple>
+  <simple id="DCE:0f99b2e4-9903-4631-9846-ff349d18ecfb" mode="readonly" name="device_model" type="string">
+    <description> This specifies the specific device</description>
+    <value>USRP</value>
+    <kind kindtype="configure"/>
+    <kind kindtype="allocation"/>
+    <action type="eq"/>
+  </simple>
+  <simple id="USRP_ip_address" mode="readwrite" name="USRP_ip_address" type="string">
+    <description>IP address of the USRP </description>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="update_available_usrp_seq" mode="readwrite" name="update_available_usrp_seq" type="boolean">
+    <description>When set to true, the available_usrp_seq property will be updated with all available usrps found on the network. Similar output to the uhd_find_devices command</description>
+    <value>False</value>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="clock_ref" mode="readwrite" name="clock_ref" type="string">
+    <value>INTERNAL</value>
+    <enumerations>
+      <enumeration label="INTERNAL" value="INTERNAL"/>
+      <enumeration label="EXTERNAL" value="EXTERNAL"/>
+      <enumeration label="MIMO" value="MIMO"/>
+    </enumerations>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <structsequence id="available_usrp_seq" mode="readonly" name="available_usrp_seq">
+    <description>Lists all USRPS found on the network (updated by setting update_available_usrp_seq property to true)</description>
+    <struct id="usrp_device_struct" mode="readonly" name="usrp_device_struct">
+      <simple id="type" mode="readonly" name="type" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="ip_address" mode="readonly" name="ip_address" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="name" mode="readonly" name="name" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="serial" mode="readonly" name="serial" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <configurationkind kindtype="configure"/>
+    </struct>
+    <configurationkind kindtype="configure"/>
+  </structsequence>
+  <structsequence id="myDevice_channel_seq" mode="readonly" name="myDevice_channel_seq">
+    <description>Describes the daughtercards and channels found in the USRP</description>
+    <struct id="usrp_channel_struct" mode="readonly" name="usrp_channel_struct">
+      <simple id="ch_name" mode="readonly" name="ch_name" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="tuner_type" mode="readonly" name="tuner_type" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="chan_num" mode="writeonly" name="chan_num" type="short">
+        <description>This is the per tuner type channel number. This means that there could be a tuner 0 for an RX and a tuner 0 for a TX.</description>
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="antenna" mode="readonly" name="antenna" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="bandwidth" mode="readonly" name="bandwidth" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="rate_current" mode="readonly" name="rate_current" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="rate_min" mode="readonly" name="rate_min" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="rate_max" mode="readonly" name="rate_max" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="freq_current" mode="readonly" name="freq_current" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="freq_min" mode="readonly" name="freq_min" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="freq_max" mode="readonly" name="freq_max" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="gain_current" mode="readonly" name="gain_current" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="gain_min" mode="readonly" name="gain_min" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="gain_max" mode="readonly" name="gain_max" type="double">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <configurationkind kindtype="configure"/>
+    </struct>
+    <configurationkind kindtype="configure"/>
+  </structsequence>
+  <structsequence id="myDevice_motherboard_seq" mode="readonly" name="myDevice_motherboard_seq">
+    <struct id="usrp_motherboard_struct" mode="readonly" name="usrp_motherboard_struct">
+      <simple id="mb_name" mode="readonly" name="mb_name" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="mb_ip" mode="readonly" name="mb_ip" type="string">
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <configurationkind kindtype="configure"/>
+    </struct>
+    <configurationkind kindtype="configure"/>
+  </structsequence>
+  <struct id="FRONTEND::tuner_allocation" mode="readwrite" name="frontend_tuner_allocation">
+    <description>Frontend Interfaces v2.0 main allocation structure</description>
+    <simple id="FRONTEND::tuner_allocation::tuner_type" mode="readwrite" name="tuner_type" type="string">
+      <description>Example Tuner Types: TX, RX, CHANNELIZER, DDC, RX_DIGITIZER, RX_DIGTIZIER_CHANNELIZER</description>
+      <value></value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::allocation_id" mode="readwrite" name="allocation_id" type="string">
+      <description>The allocation_id set by the caller. Used by the caller to reference the device uniquely</description>
+      <value></value>
+      <kind kindtype="configure"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::center_frequency" mode="readwrite" name="center_frequency" type="double">
+      <description>Requested center frequency.</description>
+      <value>0.0</value>
+      <units>Hz</units>
+      <kind kindtype="configure"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::bandwidth" mode="readwrite" name="bandwidth" type="double">
+      <description>Requested Bandwidth</description>
+      <value>0.0</value>
+      <units>Hz</units>
+      <kind kindtype="configure"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::bandwidth_tolerance" mode="readwrite" name="bandwidth_tolerance" type="double">
+      <description>Allowable Percent above requested bandwidth  (ie - 100 would be up to twice)</description>
+      <value>10.0</value>
+      <units>percent</units>
+      <kind kindtype="configure"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::sample_rate" mode="readwrite" name="sample_rate" type="double">
+      <description>Requested sample rate. This can be ignored for such devices as analog tuners</description>
+      <value>0.0</value>
+      <units>sps</units>
+      <kind kindtype="configure"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::sample_rate_tolerance" mode="readwrite" name="sample_rate_tolerance" type="double">
+      <description>Allowable Percent above requested sample rate (ie - 100 would be up to twice)</description>
+      <value>10.0</value>
+      <units>percent</units>
+      <kind kindtype="configure"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::device_control" mode="readwrite" name="device_control" type="boolean">
+      <description>True: Has control over the device to make changes
+False: Does not need control and can just attach to any currently tasked device that satisfies the parameters (essentually a listener)</description>
+      <value>true</value>
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::group_id" mode="readwrite" name="group_id" type="string">
+      <description>Unique identifier that specifies a group of device. Must match group_id on the device</description>
+      <value></value>
+      <kind kindtype="configure"/>
+    </simple>
+    <simple id="FRONTEND::tuner_allocation::rf_flow_id" mode="readwrite" name="rf_flow_id" type="string">
+      <description>Optional. Specifies a certain RF flow to allocate against. If left empty, it will match all frontend devices.</description>
+      <value></value>
+      <kind kindtype="configure"/>
+    </simple>
+    <configurationkind kindtype="allocation"/>
+  </struct>
+  <struct id="FRONTEND::listener_allocation" mode="readwrite" name="frontend_listener_allocation">
+    <description>Allocates a listener (subscriber) based off a previous allocation </description>
+    <simple id="FRONTEND::listener_allocation::existing_allocation_id" mode="readwrite" name="existing_allocation_id" type="string">
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <simple id="FRONTEND::listener_allocation::listener_allocation_id" mode="readwrite" name="listener_allocation_id" type="string">
+      <kind kindtype="configure"/>
+      <action type="external"/>
+    </simple>
+    <configurationkind kindtype="allocation"/>
+  </struct>
+  <structsequence id="FRONTEND::tuner_status" mode="readonly" name="frontend_tuner_status">
+    <description>Frontend Interfaces v2.0 status structure. One element for every frontend resource (receiver, transmitter) configured on this hardware</description>
+    <struct id="frontend_tuner_status_struct" mode="readonly">
+      <simple id="FRONTEND::tuner_status::tuner_type" mode="readwrite" name="tuner_type" type="string">
+        <description>Example Tuner Types: TX, RX, CHANNELIZER, DDC, RX_DIGITIZER, RX_DIGTIZIER_CHANNELIZER</description>
+        <value></value>
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::allocation_id_csv" mode="readwrite" name="allocation_id_csv" type="string">
+        <description>The allocation_id's set by the caller</description>
+        <value></value>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::center_frequency" mode="readwrite" name="center_frequency" type="double">
+        <description>Requested center frequency.</description>
+        <value>0.0</value>
+        <units>Hz</units>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::bandwidth" mode="readwrite" name="bandwidth" type="double">
+        <description>Requested Bandwidth</description>
+        <value>0.0</value>
+        <units>Hz</units>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::sample_rate" mode="readwrite" name="sample_rate" type="double">
+        <description>Requested sample rate. This can be ignored for such devices as analog tuners</description>
+        <value>0.0</value>
+        <units>sps</units>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::device_control" mode="readwrite" name="device_control" type="boolean">
+        <description>True: Has control over the device to make changes
+False: Does not need control and can just attach to any currently tasked device that satisfies the parameters (essentually a listener)</description>
+        <value>true</value>
+        <kind kindtype="configure"/>
+        <action type="external"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::group_id" mode="readwrite" name="group_id" type="string">
+        <description>Unique identifier that specifies a group of device. Must match group_id on the device</description>
+        <value></value>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::rf_flow_id" mode="readwrite" name="rf_flow_id" type="string">
+        <description>Optional. Specifies a certain RF flow to allocate against. If left empty, it will match all frontend devices.</description>
+        <value></value>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::enabled" mode="readwrite" name="enabled" type="boolean">
+        <description></description>
+        <value>false</value>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::complex" mode="readwrite" name="complex" type="boolean">
+        <description></description>
+        <value>false</value>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::gain" mode="readwrite" name="gain" type="double">
+        <description></description>
+        <value>0.0</value>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::available_frequency" mode="readwrite" name="available_frequency" type="string">
+        <description>Available frequencies in range (XX-YY) or csv (X,Y,Z) format. Do not put units in field</description>
+        <value></value>
+        <units>Hz</units>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::available_gain" mode="readwrite" name="available_gain" type="string">
+        <description>Available gain in range (XX-YY) or csv (X,Y,Z) format. Do not put units in field</description>
+        <value></value>
+        <units>dB</units>
+        <kind kindtype="configure"/>
+      </simple>
+      <simple id="FRONTEND::tuner_status::available_sample_rate" mode="readwrite" name="available_sample_rate" type="string">
+        <description>Available sample rates in range (XX-YY) or csv (X,Y,Z) format. Do not put units in field</description>
+        <value></value>
+        <units>sps</units>
+        <kind kindtype="configure"/>
+      </simple>
+      <configurationkind kindtype="configure"/>
+    </struct>
+    <configurationkind kindtype="configure"/>
+  </structsequence>
+  <simple id="gain_global" mode="readwrite" type="float">
+    <description>Global gain value</description>
+    <value>0</value>
+    <units>dB</units>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="group_id_global" mode="readwrite" type="string">
+    <description>Any allocations requested on this device must have a matching group_id field (ie - the group_id value defined in the allocation structure must match the group_id for the device). These values default to an empty string and therefore match by default.  
+Please see the Frontend Interfaces v2.0 documentation for a full description. </description>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+</properties>
