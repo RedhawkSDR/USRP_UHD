@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # taken from frontendUnitTests repository
-#   tag: "rel1"
+#   tag: "rel2"
 
 #import unittest
 import ossie.utils.testing
@@ -23,6 +23,8 @@ from ossie.utils import uuid
 from redhawk.frontendInterfaces import FRONTEND, FRONTEND__POA, TunerControl_idl
 from bulkio.bulkioInterfaces import BULKIO, BULKIO__POA
 from ossie.utils.bulkio import bulkio_data_helpers
+
+DEBUG_LEVEL = 0
 
 # Define device under test below
 DEVICE_INFO = {}
@@ -169,7 +171,7 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         if not execparams:
             execparams = self.getPropertySet(kinds=('execparam',), modes=('readwrite', 'writeonly'), includeNil=False)
             execparams = dict([(x.id, any.from_any(x.value)) for x in execparams])
-            execparams['DEBUG_LEVEL'] = 0
+            execparams['DEBUG_LEVEL'] = DEBUG_LEVEL
             #Add custom execparams here
             for param,val in DEVICE_INFO['execparams'].items():
                 execparams[param] = val
@@ -1140,7 +1142,7 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
             self.check(False, True, 'Allocate second %s with same alloc id check (produces %s exception, should produce InvalidCapacity exception)'%(ttype,e.__class__.__name__))
         else:
             self.check(False, True, 'Allocate second %s with same alloc id check (returns %s, should produce InvalidCapacity exception)'%(ttype,retval))
-        self.dut_ref.deallocateCapacity(tAlloc)
+        self.dut_ref.deallocateCapacity(tAlloc) # this will deallocate the original successful allocation
         
         if parent_alloc_id:
             # try to alloc using parent id
@@ -1188,19 +1190,29 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         else:
             self.check(False, True, 'Allocate %s with malformed request (alloc_id=None) check (returns %s, should produce InvalidCapacity exception)'%(ttype,retval))
         self.dut_ref.deallocateCapacity(tAlloc)
-                
+        
         # Verify failure on alloc with invalid group id (generate new uuid)
         tmp_tuner = copy.deepcopy(tuner)
         tmp_tuner['GROUP_ID'] = str(uuid.uuid4())
         tAlloc = self._generateAlloc(tmp_tuner)
-        self.check(self.dut_ref.allocateCapacity(tAlloc), False, 'Allocate %s with invalid GROUP_ID check'%(ttype))
+        try:
+            retval = self.dut_ref.allocateCapacity(tAlloc)
+        except Exception, e:
+            self.check(False, True, 'Allocate %s with invalid GROUP_ID check (produces %s exception, should return False)'%(ttype,e.__class__.__name__))
+        else:
+            self.check(False, retval, 'Allocate %s with invalid GROUP_ID check'%(ttype))
         self.dut_ref.deallocateCapacity(tAlloc)
         
         # Verify failure on alloc with invalid rf flow id (generate new uuid)
         tmp_tuner = copy.deepcopy(tuner)
         tmp_tuner['RF_FLOW_ID'] = str(uuid.uuid4())
         tAlloc = self._generateAlloc(tmp_tuner)
-        self.check(self.dut_ref.allocateCapacity(tAlloc), False, 'Allocate %s with invalid RF_FLOW_ID check'%(ttype))
+        try:
+            retval = self.dut_ref.allocateCapacity(tAlloc)
+        except Exception, e:
+            self.check(False, True, 'Allocate %s with invalid RF_FLOW_ID check (produces %s exception, should return False)'%(ttype,e.__class__.__name__))
+        else:
+            self.check(False, retval, 'Allocate %s with invalid RF_FLOW_ID check'%(ttype))
         self.dut_ref.deallocateCapacity(tAlloc)
         
     def _checkListenerAllocation(self,tuner,ttype):
@@ -1225,6 +1237,7 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         # Allocate Listener via tuner allocation struct
         tAlloc = self._generateAlloc(tuner)
         self.dut_ref.allocateCapacity(tAlloc)
+        
         tListener = copy.deepcopy(tuner)
         tListener['ALLOC_ID'] = str(uuid.uuid4())
         tListener['CONTROL'] = False
@@ -1254,6 +1267,7 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         tAlloc = self._generateAlloc(tuner)
         self.dut_ref.allocateCapacity(tAlloc)
         tListener = copy.deepcopy(tuner)
+        tListener['ALLOC_ID'] = str(uuid.uuid4())
         tListener['CF'] = tuner['CF'] * 2.0
         tListener['BW'] = tuner['BW'] * 2.0
         tListener['SR'] = tuner['SR'] * 2.0
@@ -1439,6 +1453,7 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         props = self.dut.query([])
         props_type = type(props) # need this later to check getTunerStatus return type
         props = properties.props_to_dict(props)
+        #pp(props)
         for tuner_prop in props['FRONTEND::tuner_status']:
             if controller_id in tuner_prop['FRONTEND::tuner_status::allocation_id_csv'].split(','):
                 break
@@ -1626,7 +1641,7 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
             self.check(type(resp), props_type, '%s.getTunerStatus has correct return type'%(port_name))
             self.check(type(resp), props_type, '%s.getTunerStatus return value is within expected results'%(port_name))
             resp = properties.props_to_dict(resp)
-            #print resp
+            #pp(resp)
             self.check(controller_id in resp['FRONTEND::tuner_status::allocation_id_csv'].split(','), True, '%s.getTunerStatus return value has correct tuner status for allocation ID requested'%(port_name))
             self.check(resp, tuner_prop, '%s.getTunerStatus matches frontend tuner status prop'%(port_name))
         
@@ -1820,14 +1835,14 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
                     except:
                         pass
         
-        #Check gain      
+        #Check gain
         try:
             gain = tuner_control.getTunerGain(controller_id)
         except FRONTEND.NotSupportedException:
             self.check(True,True,'%s.getTunerGain produces NotSupportedException -- cannot verify out-of-bounds gain setting'%(port_name))
         else:
             try:
-                tuner_control.setTunerGain(controller_id, tuner_info['GAIN_MAX'] + abs(gain))
+                tuner_control.setTunerGain(controller_id, tuner_info['GAIN_MAX'] + abs(tuner_info['GAIN_MAX']-tuner_info['GAIN_MIN']) + 1)
             except FRONTEND.NotSupportedException:
                 self.check(True,True,'%s.setTunerGain produces NotSupportedException -- cannot verify out-of-bounds gain setting'%(port_name))
             except FRONTEND.BadParameterException, e:
@@ -1841,7 +1856,7 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
                 '''
                 # DEBUG
                 print 'DEBUG - out of bounds retune of gain incorrectly caused change in gain'
-                print 'DEBUG - orig gain: %s  new gain: %s  tuned gain: %s'%(gain,new_gain,tuner_info['GAIN_MAX'] + abs(gain))
+                print 'DEBUG - orig gain: %s  new gain: %s  tuned gain: %s'%(gain,new_gain,tuner_info['GAIN_MAX'] + abs(tuner_info['GAIN_MAX']-tuner_info['GAIN_MIN']) + 1)
                 # end DEBUG
                 '''
                 try:
@@ -2218,15 +2233,24 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         # make allocations
         controller_id = controller['ALLOC_ID']
         controller_alloc = self._generateAlloc(controller)
-        self.dut_ref.allocateCapacity(controller_alloc)
+        retval = self.dut_ref.allocateCapacity(controller_alloc)
+        if not retval:
+            self.testReport.append('Could not allocate controller -- terminating test')
+            return False
         if listener1:
             listener1_id = listener1['LISTENER_ID']
             listener1_alloc = self._generateListenerAlloc(listener1)
-            self.dut_ref.allocateCapacity(listener1_alloc)
-            if listener2:
+            retval = self.dut_ref.allocateCapacity(listener1_alloc)
+            if not retval:
+                self.testReport.append('Could not allocate listener1 -- limited test')
+                listener1 = None
+            elif listener2:
                 listener2_id = listener2['LISTENER_ID']
                 listener2_alloc = self._generateListenerAlloc(listener2)
-                self.dut_ref.allocateCapacity(listener2_alloc)
+                retval = self.dut_ref.allocateCapacity(listener2_alloc)
+                if not retval:
+                    self.testReport.append('Could not allocate listener2 -- limited test')
+                    listener2 = None
         else:
             listener2 = None # if no 1st listener, ignore 2nd listener even if specified
         
@@ -2240,22 +2264,25 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         except KeyError:
             self.check(False, True, 'Device has FRONTEND::tuner_status property (failure, cannot complete test)')
         else:
-            self.check(True, True, 'Device has FRONTEND::tuner_status property')
-            for name,dtype in self.FE_tuner_status_fields_req.items():
-                if status.has_key(name):
-                    self.check(True, True, 'tuner_status has required field %s'%name)
-                    self.check(type(status[name]) in dtype, True, 'value has correct data type for %s'%(name))
-                else:
-                    self.check(False, True, 'tuner_status has required field %s'%name)
-            for name,dtype in self.FE_tuner_status_fields_opt.items():
-                if status.has_key(name):
-                    self.check(True, True, 'tuner_status has OPTIONAL field %s'%name)#, successMsg='yes')
-                    self.check(type(status[name]) in dtype, True, 'value has correct data type for %s'%(name))
-                else:
-                    self.check(False, True, 'tuner_status has OPTIONAL field %s'%name, failureMsg='no')
-            all_names = self.FE_tuner_status_fields_req.keys()+self.FE_tuner_status_fields_opt.keys()
-            for name in filter(lambda x: x not in all_names,status.keys()):
-                self.check(False, True, 'tuner_status has UNKNOWN field %s'%name, failureMsg='WARN')
+            if status == None:
+                self.check(False, True, 'Device has FRONTEND::tuner_status property (failure, cannot complete test)')
+            else:
+                self.check(True, True, 'Device has FRONTEND::tuner_status property')
+                for name,dtype in self.FE_tuner_status_fields_req.items():
+                    if status.has_key(name):
+                        self.check(True, True, 'tuner_status has required field %s'%name)
+                        self.check(type(status[name]) in dtype, True, 'value has correct data type for %s'%(name))
+                    else:
+                        self.check(False, True, 'tuner_status has required field %s'%name)
+                for name,dtype in self.FE_tuner_status_fields_opt.items():
+                    if status.has_key(name):
+                        self.check(True, True, 'tuner_status has OPTIONAL field %s'%name)#, successMsg='yes')
+                        self.check(type(status[name]) in dtype, True, 'value has correct data type for %s'%(name))
+                    else:
+                        self.check(False, True, 'tuner_status has OPTIONAL field %s'%name, failureMsg='no')
+                all_names = self.FE_tuner_status_fields_req.keys()+self.FE_tuner_status_fields_opt.keys()
+                for name in filter(lambda x: x not in all_names,status.keys()):
+                    self.check(False, True, 'tuner_status has UNKNOWN field %s'%name, failureMsg='WARN')
     
         # Verify alloc_id_csv is populated after controller allocation
         try:
@@ -2263,7 +2290,10 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         except KeyError:
             pass
         else:
-            self.check(controller_id, status_val.split(',')[0], 'controller allocation id added to tuner status after allocation of controller (first in CSV list)')
+            if status_val == None:
+                self.check(True, False, 'controller allocation id added to tuner status after allocation of controller (could not get tuner status prop)')
+            else:
+                self.check(controller_id, status_val.split(',')[0], 'controller allocation id added to tuner status after allocation of controller (must be first in CSV list)')
         
         # Verify tuner is enabled following allocation
         try:
@@ -2271,7 +2301,10 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
         except KeyError:
             pass
         else:
-            self.check(True, status_val, 'Tuner is enabled in tuner status after tuner allocation')
+            if status_val == None:
+                self.check(True, False, 'Tuner is enabled in tuner status after tuner allocation (could not get tuner status prop)')
+            else:
+                self.check(True, status_val, 'Tuner is enabled in tuner status after tuner allocation')
 
         if listener1:
             # Verify listener allocation id is added after allocation of listener        
@@ -2280,7 +2313,10 @@ class DeviceTests(ossie.utils.testing.ScaComponentTestCase):
             except KeyError:
                 pass
             else:
-                self.check(listener1_id in status_val.split(',')[1:], True, 'listener allocation id added to tuner status after allocation of listener (not first in CSV list)')
+                if status_val == None:
+                    self.check(True, False, 'listener allocation id added to tuner status after allocation of listener (could not get tuner status prop)')
+                else:
+                    self.check(listener1_id in status_val.split(',')[1:], True, 'listener allocation id added to tuner status after allocation of listener (must not be first in CSV list)')
         
         if tuner_control:
             # Verify frequency prop
