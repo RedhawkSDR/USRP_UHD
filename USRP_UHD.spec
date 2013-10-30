@@ -32,16 +32,15 @@ Prefix: %{_prefix}
 
 Name: USRP_UHD
 Summary: Device %{name}
-Version: 2.0.1
-Release: 1.%{?dist}
+Version: 2.0.2
+Release: 1%{?dist}
 License: None
 Group: REDHAWK/Devices
 Source: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-root
 
 Requires: redhawk >= 1.8
-BuildRequires: redhawk >= 1.8
-BuildRequires: autoconf automake libtool
+BuildRequires: redhawk-devel >= 1.8
 BuildRequires: redhawk-sdrroot-dev-mgr >= 1.8
 
 # Interface requirements
@@ -54,7 +53,6 @@ Requires: boost >= 1.41
 Requires: apache-log4cxx >= 0.10
 BuildRequires: boost-devel >= 1.41
 BuildRequires: libomniORB4.1-devel
-BuildRequires: apache-log4cxx-devel >= 0.10
 
 %if "%{?rhel}" == "6"
 Requires: libuuid-devel
@@ -64,8 +62,8 @@ Requires: e2fsprogs-devel
 BuildRequires: e2fsprogs-devel
 %endif
 
-Requires: uhd >= 003.003
-BuildRequires: uhd >= 003.003
+BuildRequires: uhd
+BuildRequires: uhd-devel
 
 %if %{with intel}
 BuildRequires: compat-libstdc++-33
