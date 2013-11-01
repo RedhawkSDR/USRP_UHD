@@ -188,12 +188,13 @@ class FrontendTunerTests(ossie.utils.testing.ScaComponentTestCase):
         print '\texecparams:',str(execparams)
         print '\tconfigure:',str(configure)
         print '\tinitialize:',str(initialize)
-        
-        # deprecated, use in 1.8.x versions
-        #self.dut = sb.Component(DEVICE_INFO['SPD'],execparams=execparams,configure=configure,initialize=initialize) 
-        
-        # new method, use in versions >= 1.9
-        self.dut = sb.launch(DEVICE_INFO['SPD'],execparams=execparams,configure=configure,initialize=initialize) 
+
+        try:
+            # new method, use in versions >= 1.9
+            self.dut = sb.launch(DEVICE_INFO['SPD'],execparams=execparams,configure=configure,initialize=initialize)
+        except:
+            # deprecated, use in 1.8.x versions
+            self.dut = sb.Component(DEVICE_INFO['SPD'],execparams=execparams,configure=configure,initialize=initialize) 
         
         self.dut_ref = self.dut.ref._narrow(CF.Device)
         
@@ -306,6 +307,10 @@ class FrontendTunerTests(ossie.utils.testing.ScaComponentTestCase):
         self.check(props.has_key('FRONTEND::tuner_status'), True, 'Has tuner_status property')
         # check for required fields
         #pp(props['FRONTEND::tuner_status'])
+        if (len(props['FRONTEND::tuner_status']) == 0):
+                print '\nERROR - tuner_status is empty. Check that the unit test is configured to reach the target device hardware.\n'
+                self.check(False,True,'\nERROR - tuner_status is empty. Check that the unit test is configured to reach the target device hardware.',throwOnFailure=True)
+  
         for field in self.FE_tuner_status_fields_req:
             self.check(props['FRONTEND::tuner_status'][-1].has_key(field), True, 'tuner_status has %s required field'%field)
         
