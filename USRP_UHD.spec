@@ -47,12 +47,6 @@ BuildRequires: redhawk-sdrroot-dev-mgr >= 1.8
 Requires: frontendInterfaces bulkioInterfaces
 BuildRequires: frontendInterfaces bulkioInterfaces
 
-# C++ requirements
-Requires: libomniORB4.1
-Requires: boost >= 1.41
-Requires: apache-log4cxx >= 0.10
-BuildRequires: boost-devel >= 1.41
-BuildRequires: libomniORB4.1-devel
 
 %if "%{?rhel}" == "6"
 Requires: libuuid-devel
