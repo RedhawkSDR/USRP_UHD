@@ -11,7 +11,7 @@ Prefix:         %{_prefix}
 %define _infodir       %{_prefix}/info
 
 Name:           USRP_UHD
-Version:        1.0.0
+Version:        3.0.0
 Release:        1%{?dist}
 Summary:        Device %{name}
 
@@ -23,9 +23,19 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:  redhawk-devel >= 1.10
 Requires:       redhawk >= 1.10
 
+%if "%{?rhel}" == "6"
+Requires: libuuid-devel
+BuildRequires: libuuid-devel
+%else
+Requires: e2fsprogs-devel
+BuildRequires: e2fsprogs-devel
+%endif
+
 # Interface requirements
 BuildRequires:  frontendInterfaces bulkioInterfaces
 Requires:       frontendInterfaces bulkioInterfaces
+
+BuildRequires: uhd-devel
 
 %description
 Device %{name}
