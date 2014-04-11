@@ -400,7 +400,7 @@ void USRP_UHD_i::deviceEnable(frontend_tuner_status_struct_struct &fts, size_t t
     // Start Streaming Now
     interrupt(tuner_id);
     exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-    usrpEnable(tuner_id);
+    usrpEnable(tuner_id); // modifies fts.enabled appropriately
 }
 void USRP_UHD_i::deviceDisable(frontend_tuner_status_struct_struct &fts, size_t tuner_id){
     /************************************************************
@@ -412,7 +412,7 @@ void USRP_UHD_i::deviceDisable(frontend_tuner_status_struct_struct &fts, size_t 
     // Stop Streaming Now
     interrupt(tuner_id);
     exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-    usrpDisable(tuner_id);
+    usrpDisable(tuner_id); //modifies fts.enabled appropriately
 }
 bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struct &request, frontend_tuner_status_struct_struct &fts, size_t tuner_id){
     /************************************************************
@@ -455,24 +455,24 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
         opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
     } // end scope for prop_lock
 
-    if (frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER") {
+    if (fts.tuner_type == "RX_DIGITIZER") {
 
         interrupt(tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
 
         // configure hw
-        usrp_device_ptr->set_rx_freq(request.center_frequency, frontend_tuner_status[tuner_id].tuner_number);
-        usrp_device_ptr->set_rx_bandwidth(opt_bw, frontend_tuner_status[tuner_id].tuner_number);
-        usrp_device_ptr->set_rx_rate(opt_sr, frontend_tuner_status[tuner_id].tuner_number);
+        usrp_device_ptr->set_rx_freq(request.center_frequency, fts.tuner_number);
+        usrp_device_ptr->set_rx_bandwidth(opt_bw, fts.tuner_number);
+        usrp_device_ptr->set_rx_rate(opt_sr, fts.tuner_number);
 
         // update frontend_tuner_status with actual hw values
-        frontend_tuner_status[tuner_id].center_frequency = usrp_device_ptr->get_rx_freq(frontend_tuner_status[tuner_id].tuner_number);
-        frontend_tuner_status[tuner_id].bandwidth = usrp_device_ptr->get_rx_bandwidth(frontend_tuner_status[tuner_id].tuner_number);
-        frontend_tuner_status[tuner_id].sample_rate = usrp_device_ptr->get_rx_rate(frontend_tuner_status[tuner_id].tuner_number);
+        fts.center_frequency = usrp_device_ptr->get_rx_freq(fts.tuner_number);
+        fts.bandwidth = usrp_device_ptr->get_rx_bandwidth(fts.tuner_number);
+        fts.sample_rate = usrp_device_ptr->get_rx_rate(fts.tuner_number);
 
         // update tolerance
-        frontend_tuner_status[tuner_id].bandwidth_tolerance = request.bandwidth_tolerance;
-        frontend_tuner_status[tuner_id].sample_rate_tolerance = request.sample_rate_tolerance;
+        fts.bandwidth_tolerance = request.bandwidth_tolerance;
+        fts.sample_rate_tolerance = request.sample_rate_tolerance;
 
         // creates a stream id if not already created for this tuner
         std::string stream_id = getStreamId(tuner_id);
@@ -482,24 +482,24 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
 
         usrp_tuners[tuner_id].update_sri = true;
 
-    } else if (frontend_tuner_status[tuner_id].tuner_type == "TX") {
+    } else if (fts.tuner_type == "TX") {
 
         interrupt(tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
 
         // configure hw
-        usrp_device_ptr->set_tx_freq(request.center_frequency, frontend_tuner_status[tuner_id].tuner_number);
-        usrp_device_ptr->set_tx_bandwidth(request.bandwidth, frontend_tuner_status[tuner_id].tuner_number);
-        usrp_device_ptr->set_tx_rate(opt_sr, frontend_tuner_status[tuner_id].tuner_number);
+        usrp_device_ptr->set_tx_freq(request.center_frequency, fts.tuner_number);
+        usrp_device_ptr->set_tx_bandwidth(request.bandwidth, fts.tuner_number);
+        usrp_device_ptr->set_tx_rate(opt_sr, fts.tuner_number);
 
         // update frontend_tuner_status with actual hw values
-        frontend_tuner_status[tuner_id].center_frequency = usrp_device_ptr->get_tx_freq(frontend_tuner_status[tuner_id].tuner_number);
-        frontend_tuner_status[tuner_id].bandwidth = usrp_device_ptr->get_tx_bandwidth(frontend_tuner_status[tuner_id].tuner_number);
-        frontend_tuner_status[tuner_id].sample_rate = usrp_device_ptr->get_tx_rate(frontend_tuner_status[tuner_id].tuner_number);
+        fts.center_frequency = usrp_device_ptr->get_tx_freq(fts.tuner_number);
+        fts.bandwidth = usrp_device_ptr->get_tx_bandwidth(fts.tuner_number);
+        fts.sample_rate = usrp_device_ptr->get_tx_rate(fts.tuner_number);
 
         // update tolerance
-        frontend_tuner_status[tuner_id].bandwidth_tolerance = request.bandwidth_tolerance;
-        frontend_tuner_status[tuner_id].sample_rate_tolerance = request.sample_rate_tolerance;
+        fts.bandwidth_tolerance = request.bandwidth_tolerance;
+        fts.sample_rate_tolerance = request.sample_rate_tolerance;
 
     } else {
         LOG_ERROR(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID TUNER TYPE. MUST BE RX_DIGITIZER OR TX!");
@@ -524,10 +524,10 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
 
     usrp_tuners[tuner_id].reset();
-    frontend_tuner_status[tuner_id].center_frequency = 0.0;
-    frontend_tuner_status[tuner_id].sample_rate = 0.0;
-    frontend_tuner_status[tuner_id].bandwidth = 0.0;
-    frontend_tuner_status[tuner_id].gain = 0.0;
+    fts.center_frequency = 0.0;
+    fts.sample_rate = 0.0;
+    fts.bandwidth = 0.0;
+    fts.gain = 0.0;
     return true;
 }
 
