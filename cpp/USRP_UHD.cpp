@@ -365,7 +365,8 @@ void USRP_UHD_i::construct()
     transmit_service_thread = NULL;
 
     // set some default values that should get overwritten by correct values
-    device_gain_global = 0.0;
+    device_rx_gain_global = 0.0;
+    device_tx_gain_global = 0.0;
     device_reference_source_global = "INTERNAL";
     device_group_id_global = "USRP_GROUP_ID_NOT_SET";
     rx_rfinfo_pkt.rf_flow_id = "USRP_RX_FLOW_ID_NOT_SET";
@@ -377,7 +378,8 @@ void USRP_UHD_i::construct()
     ***********************************************************************************/
 
     addPropertyChangeListener("device_ip_address", this, &USRP_UHD_i::deviceIpAddressChanged);
-    addPropertyChangeListener("device_gain_global", this, &USRP_UHD_i::deviceGainChanged);
+    addPropertyChangeListener("device_rx_gain_global", this, &USRP_UHD_i::deviceRxGainChanged);
+    addPropertyChangeListener("device_tx_gain_global", this, &USRP_UHD_i::deviceTxGainChanged);
     addPropertyChangeListener("device_group_id_global", this, &USRP_UHD_i::deviceGroupIdChanged);
     addPropertyChangeListener("update_available_devices", this, &USRP_UHD_i::updateAvailableDevicesChanged);
     addPropertyChangeListener("device_reference_source_global", this, &USRP_UHD_i::deviceReferenceSourceChanged);
@@ -791,19 +793,35 @@ void USRP_UHD_i::deviceIpAddressChanged(const std::string* old_value, const std:
     }
 
 }
-void USRP_UHD_i::deviceGainChanged(const float* old_value, const float* new_value){
+void USRP_UHD_i::deviceRxGainChanged(const float* old_value, const float* new_value){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_gain_global=" << device_gain_global);
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_gain_global=" << device_rx_gain_global);
 
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
     exclusive_lock lock(prop_lock);
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
 
     if (false){ // TODO - check validity of gain value, revert to old_value if new_value is invalid
-        device_gain_global = *old_value;
+    	device_rx_gain_global = *old_value;
         LOG_WARN(USRP_UHD_i,"Invalid gain value ("<< *new_value << "), ignoring.")
     } else {
-        updateDeviceGain();
+        updateDeviceRxGain();
+    }
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
+}
+void USRP_UHD_i::deviceTxGainChanged(const float* old_value, const float* new_value){
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_gain_global=" << device_tx_gain_global);
+
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
+    exclusive_lock lock(prop_lock);
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
+
+    if (false){ // TODO - check validity of gain value, revert to old_value if new_value is invalid
+    	device_tx_gain_global = *old_value;
+        LOG_WARN(USRP_UHD_i,"Invalid gain value ("<< *new_value << "), ignoring.")
+    } else {
+        updateDeviceTxGain();
     }
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 }
@@ -1080,7 +1098,8 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
 
         // update device channels with global settings
         //updateGroupId(); // already completed above, nothing extra needs to be done
-        updateDeviceGain(); // sets device with global value, so need to call this one
+        updateDeviceRxGain(); // sets device with global value, so need to call this one
+        updateDeviceTxGain(); // sets device with global value, so need to call this one
         updateDeviceReferenceSource(); // sets device with global value, so need to call this one
 
     } catch (...) {
@@ -1180,8 +1199,8 @@ void USRP_UHD_i::updateDeviceInfo() {
 }
 
 /* acquire prop_lock prior to calling this function */
-void USRP_UHD_i::updateDeviceGain() {
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " device_gain_global=" << device_gain_global);
+void USRP_UHD_i::updateDeviceRxGain() {
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " device_rx_gain_global=" << device_rx_gain_global);
 
     if (usrp_device_ptr.get() == NULL)
         return;
@@ -1195,8 +1214,32 @@ void USRP_UHD_i::updateDeviceGain() {
             exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " acquired tuner lock for tuner_id " << tuner_id);
 
-            usrp_device_ptr->set_rx_gain(device_gain_global,usrp_channel_number);
+            usrp_device_ptr->set_rx_gain(device_rx_gain_global,usrp_channel_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_rx_gain(usrp_channel_number);
+
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " releasing tuner lock for tuner_id " << tuner_id);
+        }
+    }
+}
+
+/* acquire prop_lock prior to calling this function */
+void USRP_UHD_i::updateDeviceTxGain() {
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " device_tx_gain_global=" << device_tx_gain_global);
+
+    if (usrp_device_ptr.get() == NULL)
+        return;
+
+    for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
+        if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
+            size_t usrp_channel_number = device_channels[tuner_id].chan_num;
+
+            interrupt(tuner_id);
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " waiting for tuner lock for tuner_id " << tuner_id);
+            exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " acquired tuner lock for tuner_id " << tuner_id);
+
+            usrp_device_ptr->set_tx_gain(device_tx_gain_global,usrp_channel_number);
+            frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_tx_gain(usrp_channel_number);
 
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " releasing tuner lock for tuner_id " << tuner_id);
         }

@@ -300,7 +300,8 @@ class USRP_UHD_i : public USRP_UHD_base
         // configure callbacks
         void updateAvailableDevicesChanged(const bool* old_value, const bool* new_value);
         void deviceIpAddressChanged(const std::string* old_value, const std::string* new_value) throw (CF::PropertySet::InvalidConfiguration);
-        void deviceGainChanged(const float* old_value, const float* new_value);
+        void deviceRxGainChanged(const float* old_value, const float* new_value);
+        void deviceTxGainChanged(const float* old_value, const float* new_value);
         void deviceReferenceSourceChanged(const std::string* old_value, const std::string* new_value);
         void deviceGroupIdChanged(const std::string* old_value, const std::string* new_value);
 
@@ -318,7 +319,8 @@ class USRP_UHD_i : public USRP_UHD_base
         void updateAvailableDevices();
         void initUsrp() throw (CF::PropertySet::InvalidConfiguration);
         void updateDeviceInfo();
-        void updateDeviceGain();
+        void updateDeviceRxGain();
+        void updateDeviceTxGain();
         void updateDeviceReferenceSource();
         bool usrpReceive(size_t tuner_id, double timeout = 1.0);
         template <class PACKET_TYPE> bool usrpTransmit(size_t tuner_id, PACKET_TYPE *packet);

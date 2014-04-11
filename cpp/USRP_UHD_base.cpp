@@ -229,10 +229,19 @@ void USRP_UHD_base::loadProperties()
                 "external",
                 "configure");
 
-    addProperty(device_gain_global,
+    addProperty(device_rx_gain_global,
                 0,
-                "device_gain_global",
-                "device_gain_global",
+                "device_rx_gain_global",
+                "device_rx_gain_global",
+                "readwrite",
+                "dB",
+                "external",
+                "configure");
+
+    addProperty(device_tx_gain_global,
+                0,
+                "device_tx_gain_global",
+                "device_tx_gain_global",
                 "readwrite",
                 "dB",
                 "external",

@@ -206,8 +206,15 @@ False: Does not need control and can just attach to any currently tasked device 
     <kind kindtype="configure"/>
     <action type="external"/>
   </simple>
-  <simple id="device_gain_global" mode="readwrite" name="device_gain_global" type="float">
-    <description>Global gain value</description>
+  <simple id="device_rx_gain_global" mode="readwrite" name="device_rx_gain_global" type="float">
+    <description>Global RX_DIGITIZER gain value</description>
+    <value>0</value>
+    <units>dB</units>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="device_tx_gain_global" mode="readwrite" name="device_tx_gain_global" type="float">
+    <description>Global TX gain value</description>
     <value>0</value>
     <units>dB</units>
     <kind kindtype="configure"/>
