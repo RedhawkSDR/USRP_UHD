@@ -324,8 +324,8 @@ class USRP_UHD_i : public USRP_UHD_base
         void updateDeviceReferenceSource();
         bool usrpReceive(size_t tuner_id, double timeout = 1.0);
         template <class PACKET_TYPE> bool usrpTransmit(size_t tuner_id, PACKET_TYPE *packet);
-        bool usrpEnable(size_t tuner_id, size_t chan);
-        bool usrpDisable(size_t tuner_id, size_t chan);
+        bool usrpEnable(size_t tuner_id);
+        bool usrpDisable(size_t tuner_id);
 
         // UHD driver specific
         uhd::usrp::multi_usrp::sptr usrp_device_ptr;
