@@ -642,22 +642,11 @@ template <class IN_PORT_TYPE> bool USRP_UHD_i::transmitHelper(IN_PORT_TYPE *data
     return true;
 }
 
-/* acquire prop_lock prior to calling this function */
-void USRP_UHD_i::updateRfFlowId(std::string tuner_type){
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_type=" << tuner_type);
-
-    std::string rf_flow_id;
-    if( tuner_type == "RX_DIGITIZER")
-        rf_flow_id = rx_rfinfo_pkt.rf_flow_id;
-    else if( tuner_type == "TX")
-        rf_flow_id = tx_rfinfo_pkt.rf_flow_id;
-    else{
-        LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN TUNER TYPE: " + tuner_type);
-        return;
-    }
+void USRP_UHD_i::updateRxRfFlowId(std::string rf_flow_id){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " rf_flow_id=" << rf_flow_id);
 
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
-        if(frontend_tuner_status[tuner_id].tuner_type == tuner_type){
+        if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
 
             interrupt(tuner_id);
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
@@ -672,9 +661,27 @@ void USRP_UHD_i::updateRfFlowId(std::string tuner_type){
     }
 }
 
-/* acquire prop_lock prior to calling this function */
-void USRP_UHD_i::updateGroupId(){
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " device_group_id_global=" << device_group_id_global);
+void USRP_UHD_i::updateTxRfFlowId(std::string rf_flow_id){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " rf_flow_id=" << rf_flow_id);
+
+    for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
+        if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
+
+            interrupt(tuner_id);
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
+            exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
+
+            frontend_tuner_status[tuner_id].rf_flow_id = rf_flow_id;
+            usrp_tuners[tuner_id].update_sri = true;
+
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
+        }
+    }
+}
+
+void USRP_UHD_i::updateGroupId(std::string group){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " group=" << group);
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
 
         interrupt(tuner_id);
@@ -682,7 +689,7 @@ void USRP_UHD_i::updateGroupId(){
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
         LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
 
-        frontend_tuner_status[tuner_id].group_id = device_group_id_global;
+        frontend_tuner_status[tuner_id].group_id = group;
 
         LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
     }
@@ -755,39 +762,27 @@ void USRP_UHD_i::deviceRxGainChanged(const float* old_value, const float* new_va
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_gain_global=" << device_rx_gain_global);
 
-    updateDeviceRxGain();
+    updateDeviceRxGain(*new_value);
 }
 void USRP_UHD_i::deviceTxGainChanged(const float* old_value, const float* new_value){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_gain_global=" << device_tx_gain_global);
 
-    updateDeviceTxGain();
+    updateDeviceTxGain(*new_value);
 }
 
 void USRP_UHD_i::deviceReferenceSourceChanged(const std::string* old_value, const std::string* new_value){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_reference_source_global=" << device_reference_source_global);
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
-    exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
-    updateDeviceReferenceSource();
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
+    updateDeviceReferenceSource(*new_value);
 }
 
 void USRP_UHD_i::deviceGroupIdChanged(const std::string* old_value, const std::string* new_value){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_group_id_global=" << device_group_id_global);
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
-    exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
-    updateGroupId();
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
+    updateGroupId(*new_value);
 }
 
 /* acquire tuner's lock prior to calling this function */
@@ -1037,9 +1032,9 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
 
         // update device channels with global settings
         //updateGroupId(); // already completed above, nothing extra needs to be done
-        updateDeviceRxGain(); // sets device with global value, so need to call this one
-        updateDeviceTxGain(); // sets device with global value, so need to call this one
-        updateDeviceReferenceSource(); // sets device with global value, so need to call this one
+        updateDeviceRxGain(device_rx_gain_global); // sets device with global value, so need to call this one
+        updateDeviceTxGain(device_tx_gain_global); // sets device with global value, so need to call this one
+        updateDeviceReferenceSource(device_reference_source_global); // sets device with global value, so need to call this one
 
     } catch (...) {
         LOG_ERROR(USRP_UHD_i,"USRP COULD NOT BE INITIALIZED!");
@@ -1137,9 +1132,8 @@ void USRP_UHD_i::updateDeviceInfo() {
     }
 }
 
-/* acquire prop_lock prior to calling this function */
-void USRP_UHD_i::updateDeviceRxGain() {
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " device_rx_gain_global=" << device_rx_gain_global);
+void USRP_UHD_i::updateDeviceRxGain(double gain) {
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " gain=" << gain);
 
     if (usrp_device_ptr.get() == NULL)
         return;
@@ -1152,7 +1146,7 @@ void USRP_UHD_i::updateDeviceRxGain() {
             exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " acquired tuner lock for tuner_id " << tuner_id);
 
-            usrp_device_ptr->set_rx_gain(device_rx_gain_global,frontend_tuner_status[tuner_id].tuner_number);
+            usrp_device_ptr->set_rx_gain(gain,frontend_tuner_status[tuner_id].tuner_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_rx_gain(frontend_tuner_status[tuner_id].tuner_number);
 
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " releasing tuner lock for tuner_id " << tuner_id);
@@ -1160,9 +1154,8 @@ void USRP_UHD_i::updateDeviceRxGain() {
     }
 }
 
-/* acquire prop_lock prior to calling this function */
-void USRP_UHD_i::updateDeviceTxGain() {
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " device_tx_gain_global=" << device_tx_gain_global);
+void USRP_UHD_i::updateDeviceTxGain(double gain) {
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " gain=" << gain);
 
     if (usrp_device_ptr.get() == NULL)
         return;
@@ -1175,7 +1168,7 @@ void USRP_UHD_i::updateDeviceTxGain() {
             exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " acquired tuner lock for tuner_id " << tuner_id);
 
-            usrp_device_ptr->set_tx_gain(device_tx_gain_global,frontend_tuner_status[tuner_id].tuner_number);
+            usrp_device_ptr->set_tx_gain(gain,frontend_tuner_status[tuner_id].tuner_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_tx_gain(frontend_tuner_status[tuner_id].tuner_number);
 
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " releasing tuner lock for tuner_id " << tuner_id);
@@ -1183,15 +1176,14 @@ void USRP_UHD_i::updateDeviceTxGain() {
     }
 }
 
-/* acquire prop_lock prior to calling this function */
-void USRP_UHD_i::updateDeviceReferenceSource(){
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " device_reference_source_global=" << device_reference_source_global);
+void USRP_UHD_i::updateDeviceReferenceSource(std::string source){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " source=" << source);
 
     if (usrp_device_ptr.get() == NULL)
         return;
 
     long source_prop = 0;
-    if(device_reference_source_global != "INTERNAL"){
+    if(source != "INTERNAL"){
         source_prop = 1;
     }
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
@@ -1206,15 +1198,15 @@ void USRP_UHD_i::updateDeviceReferenceSource(){
         LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
     }
 
-    // TODO - disable enabled tuners first? stop/restart device?
+    // TODO - disable enabled tuners first? stop/restart device? get prop_lock? ...
 
-    if (device_reference_source_global == "MIMO") {
+    if (source == "MIMO") {
         usrp_device_ptr->set_clock_source("MIMO",0);
         usrp_device_ptr->set_time_source("MIMO",0);
-    } else if (device_reference_source_global == "EXTERNAL") {
+    } else if (source == "EXTERNAL") {
         usrp_device_ptr->set_clock_source("external",0);
         usrp_device_ptr->set_time_source("external",0);
-    } else if (device_reference_source_global == "INTERNAL") {
+    } else if (source == "INTERNAL") {
         usrp_device_ptr->set_clock_source("internal",0);
         usrp_device_ptr->set_time_source("external",0);
     }
@@ -1438,8 +1430,10 @@ std::string USRP_UHD_i::get_rf_flow_id(const std::string& port_name){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name);
 
     if( port_name == "RFInfo_in"){
+    	exclusive_lock lock(prop_lock);
         return rx_rfinfo_pkt.rf_flow_id;
     } else if( port_name == "RFInfoTX_out"){
+    	exclusive_lock lock(prop_lock);
         return tx_rfinfo_pkt.rf_flow_id;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
@@ -1449,20 +1443,17 @@ std::string USRP_UHD_i::get_rf_flow_id(const std::string& port_name){
 void USRP_UHD_i::set_rf_flow_id(const std::string& port_name, const std::string& id){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name << " id=" << id);
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
-    exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
     if( port_name == "RFInfo_in"){
+        updateRxRfFlowId(id);
+    	exclusive_lock lock(prop_lock);
         rx_rfinfo_pkt.rf_flow_id = id;
-        updateRfFlowId("RX_DIGITIZER");
     } else if( port_name == "RFInfoTX_out"){
+        updateTxRfFlowId(id);
+    	exclusive_lock lock(prop_lock);
         tx_rfinfo_pkt.rf_flow_id = id;
-        updateRfFlowId("TX");
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
     }
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 }
 frontend::RFInfoPkt USRP_UHD_i::get_rfinfo_pkt(const std::string& port_name){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name);
@@ -1470,8 +1461,10 @@ frontend::RFInfoPkt USRP_UHD_i::get_rfinfo_pkt(const std::string& port_name){
     frontend::RFInfoPkt tmp;
     frontend::RFInfoPkt* pkt;
     if( port_name == "RFInfo_in"){
+    	exclusive_lock lock(prop_lock);
         pkt = &rx_rfinfo_pkt;
     } else if( port_name == "RFInfoTX_out"){
+    	exclusive_lock lock(prop_lock);
         pkt = &tx_rfinfo_pkt;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
@@ -1502,11 +1495,9 @@ frontend::RFInfoPkt USRP_UHD_i::get_rfinfo_pkt(const std::string& port_name){
 void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RFInfoPkt &pkt){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name << " pkt.rf_flow_id=" << pkt.rf_flow_id);
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
-    exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
     if( port_name == "RFInfo_in"){
+        updateRxRfFlowId(pkt.rf_flow_id);
+    	exclusive_lock lock(prop_lock);
         rx_rfinfo_pkt.rf_flow_id = pkt.rf_flow_id;
         rx_rfinfo_pkt.rf_center_freq = pkt.rf_center_freq;
         rx_rfinfo_pkt.rf_bandwidth = pkt.rf_bandwidth;
@@ -1527,8 +1518,9 @@ void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RF
         for (unsigned int i=0; i<pkt.sensor.feed.freq_range.values.size(); i++) {
             rx_rfinfo_pkt.sensor.feed.freq_range.values[i] = pkt.sensor.feed.freq_range.values[i];
         }
-        updateRfFlowId("RX_DIGITIZER");
     } else if( port_name == "RFInfoTX_out"){
+        updateTxRfFlowId(pkt.rf_flow_id);
+    	exclusive_lock lock(prop_lock);
         tx_rfinfo_pkt.rf_flow_id = pkt.rf_flow_id;
         tx_rfinfo_pkt.rf_center_freq = pkt.rf_center_freq;
         tx_rfinfo_pkt.rf_bandwidth = pkt.rf_bandwidth;
@@ -1549,7 +1541,6 @@ void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RF
         for (unsigned int i=0; i<pkt.sensor.feed.freq_range.values.size(); i++) {
             tx_rfinfo_pkt.sensor.feed.freq_range.values[i] = pkt.sensor.feed.freq_range.values[i];
         }
-        updateRfFlowId("TX");
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
     }

@@ -291,8 +291,9 @@ class USRP_UHD_i : public USRP_UHD_base
         // global properties for all channels
         frontend::RFInfoPkt rx_rfinfo_pkt;
         frontend::RFInfoPkt tx_rfinfo_pkt;
-        void updateRfFlowId(std::string tuner_type);
-        void updateGroupId();
+        void updateRxRfFlowId(std::string rf_flow_id);
+        void updateTxRfFlowId(std::string rf_flow_id);
+        void updateGroupId(std::string group);
 
         // override base class functions
         void setNumChannels(size_t num);
@@ -319,9 +320,9 @@ class USRP_UHD_i : public USRP_UHD_base
         void updateAvailableDevices();
         void initUsrp() throw (CF::PropertySet::InvalidConfiguration);
         void updateDeviceInfo();
-        void updateDeviceRxGain();
-        void updateDeviceTxGain();
-        void updateDeviceReferenceSource();
+        void updateDeviceRxGain(double gain);
+        void updateDeviceTxGain(double gain);
+        void updateDeviceReferenceSource(std::string source);
         bool usrpReceive(size_t tuner_id, double timeout = 1.0);
         template <class PACKET_TYPE> bool usrpTransmit(size_t tuner_id, PACKET_TYPE *packet);
         bool usrpEnable(size_t tuner_id);
