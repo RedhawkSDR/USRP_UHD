@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE softpkg PUBLIC "-//JTRS//DTD SCA V2.2.2 SPD//EN" "softpkg.dtd">
-<softpkg id="DCE:0dd76dd3-b44e-4e6a-b44a-896980682972" name="USRP_UHD" type="sca_compliant">
+<softpkg id="DCE:0dd76dd3-b44e-4e6a-b44a-896980682972" name="USRP_UHD" type="sca_compliant" version="3.0.0">
   <title></title>
   <author>
     <name>null</name>
   </author>
+  <description>FRONTEND Interfaces compliant device that requires the UHD host code and supporting libraries to be installed.</description>
   <propertyfile type="PRF">
     <localfile name="USRP_UHD.prf.xml"/>
   </propertyfile>

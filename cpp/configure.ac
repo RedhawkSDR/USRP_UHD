@@ -1,4 +1,4 @@
-AC_INIT(USRP_UHD, 1.0.0)
+AC_INIT(USRP_UHD, 3.0.0)
 AM_INIT_AUTOMAKE(nostdinc)
 
 
