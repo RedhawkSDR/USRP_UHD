@@ -204,29 +204,24 @@ int USRP_UHD_i::serviceFunctionReceive()
         }
 
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner " << tuner_id);
 
         //Check to make sure channel is allocated still
         if (getControlAllocationId(tuner_id).empty()){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id << "  (not allocated anymore)");
             continue;
         }
 
         //Check to see if channel output is enabled
         if (!frontend_tuner_status[tuner_id].enabled){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id << "  (not enabled)");
             continue;
         }
 
         if(usrpReceive(tuner_id)){
             rx_data = true;
         } else {
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id << " (no data received)");
             continue;
         }
 
         if (usrp_tuners[tuner_id].buffer_capacity > usrp_tuners[tuner_id].buffer_size){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id << " (buffer not full yet)");
             continue;
         }
 
@@ -246,7 +241,6 @@ int USRP_UHD_i::serviceFunctionReceive()
         // Pushing Data
         dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
         usrp_tuners[tuner_id].buffer_size = 0;
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id << " (end of loop)");
     }
 
     if(rx_data)
@@ -405,13 +399,8 @@ void USRP_UHD_i::deviceEnable(frontend_tuner_status_struct_struct &fts, size_t t
 
     // Start Streaming Now
     interrupt(tuner_id);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
     exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
-
     usrpEnable(tuner_id);
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
 }
 void USRP_UHD_i::deviceDisable(frontend_tuner_status_struct_struct &fts, size_t tuner_id){
     /************************************************************
@@ -422,13 +411,8 @@ void USRP_UHD_i::deviceDisable(frontend_tuner_status_struct_struct &fts, size_t 
 
     // Stop Streaming Now
     interrupt(tuner_id);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " waiting for tuner lock for tuner_id " << tuner_id);
     exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " acquired tuner lock for tuner_id " << tuner_id);
-
     usrpDisable(tuner_id);
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " releasing tuner lock for tuner_id " << tuner_id);
 }
 bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struct &request, frontend_tuner_status_struct_struct &fts, size_t tuner_id){
     /************************************************************
@@ -447,42 +431,34 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
     double opt_sr = request.sample_rate;
     double opt_bw = request.bandwidth;
     { // scope for prop_lock
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << "waiting for prop_lock");
         exclusive_lock lock(prop_lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << "acquired prop_lock");
 
         if (frontend::compareHz(request.center_frequency,device_channels[tuner_id].freq_min) < 0 ||
                 frontend::compareHz(request.center_frequency,device_channels[tuner_id].freq_max) > 0 ){
             LOG_INFO(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID CENTER FREQUENCY (" << request.center_frequency <<")" );
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << "releasing prop_lock");
             throw FRONTEND::BadParameterException((std::string(__PRETTY_FUNCTION__) + " : INVALID CENTER FREQUENCY").c_str());
         }
 
         if (frontend::compareHz(request.bandwidth,0.0) < 0 ||
                 frontend::compareHz(request.bandwidth,device_channels[tuner_id].bandwidth_max) > 0 ){
             LOG_INFO(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID BANDWIDTH (" << request.bandwidth <<")" );
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << "releasing prop_lock");
             throw FRONTEND::BadParameterException((std::string(__PRETTY_FUNCTION__) + " : INVALID BANDWIDTH").c_str());
         }
 
         if (frontend::compareHz(request.sample_rate,0.0) < 0 ||
                 frontend::compareHz(request.sample_rate,device_channels[tuner_id].rate_max) > 0 ){
             LOG_INFO(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID SAMPLE RATE (" << request.sample_rate <<")" );
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << "releasing prop_lock");
             throw FRONTEND::BadParameterException((std::string(__PRETTY_FUNCTION__) + " : INVALID SAMPLE RATE").c_str());
         }
 
         opt_sr = optimizeRate(request.sample_rate, tuner_id);
         opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << "releasing prop_lock");
     } // end scope for prop_lock
 
     if (frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER") {
 
         interrupt(tuner_id);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
 
         // configure hw
         usrp_device_ptr->set_rx_freq(request.center_frequency, frontend_tuner_status[tuner_id].tuner_number);
@@ -506,14 +482,10 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
 
         usrp_tuners[tuner_id].update_sri = true;
 
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
-
     } else if (frontend_tuner_status[tuner_id].tuner_type == "TX") {
 
         interrupt(tuner_id);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
 
         // configure hw
         usrp_device_ptr->set_tx_freq(request.center_frequency, frontend_tuner_status[tuner_id].tuner_number);
@@ -529,20 +501,13 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
         frontend_tuner_status[tuner_id].bandwidth_tolerance = request.bandwidth_tolerance;
         frontend_tuner_status[tuner_id].sample_rate_tolerance = request.sample_rate_tolerance;
 
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
-
     } else {
         LOG_ERROR(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID TUNER TYPE. MUST BE RX_DIGITIZER OR TX!");
         throw FRONTEND::BadParameterException((std::string(__PRETTY_FUNCTION__)+" : INVALID TUNER TYPE. MUST BE RX_DIGITIZER OR TX!").c_str());
     }
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
     exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
     updateDeviceInfo();
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 
     return true;
 }
@@ -556,16 +521,13 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     //    throw FRONTEND::BadParameterException("deviceDeleteTuning: INVALID TUNER ID");
 
     interrupt(tuner_id);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
     exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
 
     usrp_tuners[tuner_id].reset();
     frontend_tuner_status[tuner_id].center_frequency = 0.0;
     frontend_tuner_status[tuner_id].sample_rate = 0.0;
     frontend_tuner_status[tuner_id].bandwidth = 0.0;
     frontend_tuner_status[tuner_id].gain = 0.0;
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
     return true;
 }
 
@@ -616,25 +578,19 @@ template <class IN_PORT_TYPE> bool USRP_UHD_i::transmitHelper(IN_PORT_TYPE *data
             continue;
         }
 
-        LOG_INFO(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner " << tuner_id);
 
         //Check to make sure channel is allocated still
         if (getControlAllocationId(tuner_id).empty()){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id << "  (not allocated anymore)");
             continue;
         }
 
         //Check to see if wideband channel is enabled
         if (!frontend_tuner_status[tuner_id].enabled){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id << "  (not enabled)");
             continue;
         }
 
         usrpTransmit(tuner_id,packet);
-
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner " << tuner_id);
     }
 
     //Delete Memory
@@ -649,14 +605,9 @@ void USRP_UHD_i::updateRxRfFlowId(std::string rf_flow_id){
         if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
 
             interrupt(tuner_id);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
             exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
-
             frontend_tuner_status[tuner_id].rf_flow_id = rf_flow_id;
             usrp_tuners[tuner_id].update_sri = true;
-
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
         }
     }
 }
@@ -668,14 +619,9 @@ void USRP_UHD_i::updateTxRfFlowId(std::string rf_flow_id){
         if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
 
             interrupt(tuner_id);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
             exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
-
             frontend_tuner_status[tuner_id].rf_flow_id = rf_flow_id;
             usrp_tuners[tuner_id].update_sri = true;
-
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
         }
     }
 }
@@ -685,13 +631,8 @@ void USRP_UHD_i::updateGroupId(std::string group){
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
 
         interrupt(tuner_id);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
-
         frontend_tuner_status[tuner_id].group_id = group;
-
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
     }
 }
 
@@ -712,16 +653,12 @@ void USRP_UHD_i::updateAvailableDevicesChanged(const bool* old_value, const bool
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "update_available_devices=" << update_available_devices);
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
     exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
 
     if (update_available_devices){
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: update_available_devices == true");
         updateAvailableDevices();
     }
     update_available_devices = false;
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 }
 
 void USRP_UHD_i::deviceIpAddressChanged(const std::string* old_value, const std::string* new_value) throw (CF::PropertySet::InvalidConfiguration) {
@@ -736,9 +673,7 @@ void USRP_UHD_i::deviceIpAddressChanged(const std::string* old_value, const std:
     }
 
     { // scope for prop_lock
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
         exclusive_lock lock(prop_lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
 
         try{
             initUsrp();
@@ -747,7 +682,6 @@ void USRP_UHD_i::deviceIpAddressChanged(const std::string* old_value, const std:
             sleep(1);
             initUsrp();
         }
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
     } // end scope for prop_lock
 
     if(!started()){
@@ -836,7 +770,7 @@ double USRP_UHD_i::optimizeBandwidth(const double& req_bw, const size_t tuner_id
         return usrp_bw;
     }
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " could not optimize rate, returning req_rate (" << req_bw << ")");
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " could not optimize bw, returning req_bw (" << req_bw << ")");
     return req_bw;
 }
 
@@ -1142,14 +1076,9 @@ void USRP_UHD_i::updateDeviceRxGain(double gain) {
         if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
 
             interrupt(tuner_id);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " waiting for tuner lock for tuner_id " << tuner_id);
             exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " acquired tuner lock for tuner_id " << tuner_id);
-
             usrp_device_ptr->set_rx_gain(gain,frontend_tuner_status[tuner_id].tuner_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_rx_gain(frontend_tuner_status[tuner_id].tuner_number);
-
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " releasing tuner lock for tuner_id " << tuner_id);
         }
     }
 }
@@ -1164,14 +1093,9 @@ void USRP_UHD_i::updateDeviceTxGain(double gain) {
         if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
 
             interrupt(tuner_id);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " waiting for tuner lock for tuner_id " << tuner_id);
             exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " acquired tuner lock for tuner_id " << tuner_id);
-
             usrp_device_ptr->set_tx_gain(gain,frontend_tuner_status[tuner_id].tuner_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_tx_gain(frontend_tuner_status[tuner_id].tuner_number);
-
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " releasing tuner lock for tuner_id " << tuner_id);
         }
     }
 }
@@ -1189,13 +1113,8 @@ void USRP_UHD_i::updateDeviceReferenceSource(std::string source){
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
 
         interrupt(tuner_id);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << tuner_id);
-
         frontend_tuner_status[tuner_id].reference_source = source_prop;
-
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id " << tuner_id);
     }
 
     // TODO - disable enabled tuners first? stop/restart device? get prop_lock? ...
@@ -1224,14 +1143,12 @@ bool USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
             size_t((usrp_tuners[tuner_id].buffer_capacity-usrp_tuners[tuner_id].buffer_size) / 2));
 
     uhd::rx_metadata_t _metadata;
-    //LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " BEFORE RECV -- samps_to_rx=" << samps_to_rx);
     size_t num_samps = usrp_device_ptr->get_device()->recv(
             &usrp_tuners[tuner_id].output_buffer.at(usrp_tuners[tuner_id].buffer_size), // address of buffer to start filling data
             samps_to_rx,
             _metadata,
             uhd::io_type_t::COMPLEX_INT16,
             uhd::device::RECV_MODE_FULL_BUFF);
-    //LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " AFTER RECV -- num_samps: " << num_samps);
     usrp_tuners[tuner_id].buffer_size += (num_samps*2);
 
 //        /* TODO -- replace line above with new method below, allowing 8- or 16-bit CI data from USRP*/
@@ -1544,7 +1461,6 @@ void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RF
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
     }
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 }
 /*************************************************************
 Functions servicing the tuner control port
@@ -1587,18 +1503,14 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
     try {
 
         try {
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
             exclusive_lock lock(prop_lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
 
             if (freq < device_channels[idx].freq_min || freq > device_channels[idx].freq_max){
                 std::ostringstream msg;
                 msg << __PRETTY_FUNCTION__ << ":: INVALID CENTER FREQUENCY (" << freq <<")";
                 LOG_WARN(USRP_UHD_i,msg.str() );
-                LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
                 throw FRONTEND::BadParameterException(msg.str().c_str());
             }
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
         } catch (FRONTEND::BadParameterException) {
             throw;
         } catch (...) {
@@ -1609,9 +1521,7 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
         if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
 
             interrupt(idx);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << idx);
             exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << idx);
 
             // If the freq has changed (change in stream) or the tuner is disabled, then set it as disabled
             bool is_tuner_enabled = frontend_tuner_status[idx].enabled;
@@ -1629,22 +1539,16 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
             if (is_tuner_enabled)
                 usrpEnable(idx);
 
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id" << idx);
-
         } else if (frontend_tuner_status[idx].tuner_type == "TX") {
 
             interrupt(idx);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << idx);
             exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << idx);
 
             // set hw with new value
             usrp_device_ptr->set_tx_freq(freq, frontend_tuner_status[idx].tuner_number);
 
             // update status from hw
             frontend_tuner_status[idx].center_frequency = usrp_device_ptr->get_tx_freq(frontend_tuner_status[idx].tuner_number);
-
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id" << idx);
 
         } else {
             LOG_ERROR(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID TUNER TYPE. MUST BE RX_DIGITIZER OR TX!");
@@ -1655,13 +1559,8 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
         throw FRONTEND::FrontendException(("WARNING: " + std::string(e.what())).c_str());
     }
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
     exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
     updateDeviceInfo();
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 }
 double USRP_UHD_i::getTunerCenterFrequency(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
@@ -1681,20 +1580,16 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
     try {
         double opt_bw = bw;
         try {
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
             exclusive_lock lock(prop_lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
 
             if (frontend::compareHz(bw,0.0) < 0 ||
                     frontend::compareHz(bw,device_channels[idx].bandwidth_max) > 0 ){
                 std::ostringstream msg;
                 msg << __PRETTY_FUNCTION__ << ":: INVALID BANDWIDTH (" << bw <<")";
                 LOG_WARN(USRP_UHD_i,msg.str() );
-                LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
                 throw FRONTEND::BadParameterException(msg.str().c_str());
             }
             opt_bw = optimizeBandwidth(bw, idx);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
         } catch (FRONTEND::BadParameterException) {
             throw;
         } catch (...) {
@@ -1705,9 +1600,7 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
         if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
 
             interrupt(idx);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << idx);
             exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << idx);
 
             // set hw with new value
             usrp_device_ptr->set_rx_bandwidth(opt_bw, frontend_tuner_status[idx].tuner_number);
@@ -1716,22 +1609,16 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
             frontend_tuner_status[idx].bandwidth = usrp_device_ptr->get_rx_bandwidth(frontend_tuner_status[idx].tuner_number);
             usrp_tuners[idx].update_sri = true;
 
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id" << idx);
-
         } else if (frontend_tuner_status[idx].tuner_type == "TX") {
 
             interrupt(idx);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << idx);
             exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << idx);
 
             // set hw with new value
             usrp_device_ptr->set_tx_bandwidth(opt_bw, frontend_tuner_status[idx].tuner_number);
 
             // update status from hw
             frontend_tuner_status[idx].bandwidth = usrp_device_ptr->get_tx_bandwidth(frontend_tuner_status[idx].tuner_number);
-
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id" << idx);
 
         } else {
             LOG_ERROR(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID TUNER TYPE. MUST BE RX_DIGITIZER OR TX!");
@@ -1743,13 +1630,8 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
         throw FRONTEND::FrontendException(("WARNING: " + std::string(e.what())).c_str());
     }
 
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
     exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
     updateDeviceInfo();
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 }
 double USRP_UHD_i::getTunerBandwidth(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
@@ -1798,16 +1680,11 @@ void USRP_UHD_i::setTunerEnable(const std::string& allocation_id, bool enable) {
     }
 
     interrupt(idx);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << idx);
     exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << idx);
-
     if(enable)
         usrpEnable(idx);
     else
         usrpDisable(idx);
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id" << idx);
 }
 bool USRP_UHD_i::getTunerEnable(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
@@ -1823,28 +1700,23 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
     if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
     if(allocation_id != getControlAllocationId(idx)){
         LOG_WARN(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: ID (" << allocation_id << ") DOES NOT HAVE AUTHORIZATION TO MODIFY TUNER!" );
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
         throw FRONTEND::FrontendException((std::string(__PRETTY_FUNCTION__)+" - ID "+allocation_id+" does not have authorization to modify the tuner").c_str());
     }
     try {
         double opt_sr = sr;
         try {
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
             exclusive_lock lock(prop_lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
 
             if (frontend::compareHz(sr,0.0) < 0 ||
                     frontend::compareHz(sr,device_channels[idx].rate_max) > 0 ){
                 std::ostringstream msg;
                 msg << __PRETTY_FUNCTION__ << ":: INVALID SAMPLE RATE (" << sr <<")";
                 LOG_WARN(USRP_UHD_i,msg.str() );
-                LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
                 throw FRONTEND::BadParameterException(msg.str().c_str());
             }
 
             opt_sr = optimizeRate(sr, idx);
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "REQ_SR=" << sr << " OPT_SR=" << opt_sr);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
         } catch (FRONTEND::BadParameterException) {
             throw;
         } catch (...) {
@@ -1855,9 +1727,7 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
         if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
 
             interrupt(idx);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << idx);
             exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << idx);
 
             // set hw with new value
             usrp_device_ptr->set_rx_rate(opt_sr, frontend_tuner_status[idx].tuner_number);
@@ -1867,22 +1737,16 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "REQ_SR=" << sr << " OPT_SR=" << opt_sr << " TUNER_SR=" << frontend_tuner_status[idx].sample_rate);
             usrp_tuners[idx].update_sri = true;
 
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id" << idx);
-
         } else if (frontend_tuner_status[idx].tuner_type == "TX") {
 
             interrupt(idx);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for tuner lock for tuner_id " << idx);
             exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired tuner lock for tuner_id " << idx);
 
             // set hw with new value
             usrp_device_ptr->set_tx_rate(opt_sr, frontend_tuner_status[idx].tuner_number);
 
             // update status from hw
             frontend_tuner_status[idx].sample_rate = usrp_device_ptr->get_tx_rate(frontend_tuner_status[idx].tuner_number);
-
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing tuner lock for tuner_id" << idx);
 
         } else {
             LOG_ERROR(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: INVALID TUNER TYPE. MUST BE RX_DIGITIZER OR TX!");
@@ -1893,14 +1757,8 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
         LOG_WARN(USRP_UHD_i,std::string(__PRETTY_FUNCTION__) + " EXCEPTION:: " + std::string(e.what()) );
         throw FRONTEND::FrontendException(("WARNING: " + std::string(e.what())).c_str());
     }
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "waiting for prop_lock");
     exclusive_lock lock(prop_lock);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "acquired prop_lock");
-
     updateDeviceInfo();
-
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "releasing prop_lock");
 }
 double USRP_UHD_i::getTunerOutputSampleRate(const std::string& allocation_id){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
