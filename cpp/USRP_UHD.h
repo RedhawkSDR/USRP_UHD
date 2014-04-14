@@ -6,20 +6,19 @@
 #include <uhd/usrp/multi_usrp.hpp>
 
 /*********************************************************************************************/
-/**************************        Receive Thread Class             **************************/
+/**************************        Multi Process Thread Class       **************************/
 /*********************************************************************************************/
-/** Note:: This additional process thread is based off of the process thread class in the    */
-/**             USRP_base.h file.                                                            */
-/**             Changed serviceFunction() call to serviceFunctionReceive()                   */
+/** Note:: This class is based off of the process thread class in the USRP_base.h file.      */
+/**             Changed to accept serviceFunction as argument, rather than hard coded        */
 /**             Added interrupt() member function to interrupt underlying boost::thread      */
 /*********************************************************************************************/
 template < typename TargetClass >
-class ReceiveProcessThread
+class MultiProcessThread
 {
 public:
-    ReceiveProcessThread(TargetClass *_target, float _delay) :
-        target(_target)
+    MultiProcessThread(TargetClass *_target, int (TargetClass::*_func)(),float _delay)
     {
+    	service_function = boost::bind(_func, _target);
         _mythread = 0;
         _thread_running = false;
         _udelay = (__useconds_t)(_delay * 1000000);
@@ -33,7 +32,7 @@ public:
     void start() {
         if (_mythread == 0) {
             _thread_running = true;
-            _mythread = new boost::thread(&ReceiveProcessThread::run, this);
+            _mythread = new boost::thread(&MultiProcessThread::run, this);
         }
     };
 
@@ -41,7 +40,7 @@ public:
     void run() {
         int state = NORMAL;
         while (_thread_running and (state != FINISH)) {
-            state = target->serviceFunctionReceive();
+            state = service_function();
             if (state == NOOP) usleep(_udelay);
         }
     };
@@ -65,7 +64,7 @@ public:
         return 1;
     };
 
-    virtual ~ReceiveProcessThread(){
+    virtual ~MultiProcessThread(){
         if (_mythread != 0) {
             release(0);
             _mythread = 0;
@@ -77,89 +76,10 @@ public:
 private:
     boost::thread *_mythread;
     bool _thread_running;
-    TargetClass *target;
+    boost::function<int ()> service_function;
     __useconds_t _udelay;
     boost::condition_variable _end_of_run;
     boost::mutex _eor_mutex;
-};
-
-
-/*********************************************************************************************/
-/**************************         Transmit Thread Class           **************************/
-/*********************************************************************************************/
-/** Note:: This additional process thread is based off of the process thread class in the    */
-/**             USRP_base.h file.                                                            */
-/**             Changed serviceFunction() call to serviceFunctionTransmit()                  */
-/**             Added interrupt() member function to interrupt underlying boost::thread      */
-/*********************************************************************************************/
-template < typename TargetClass >
-class TransmitProcessThread
-{
-    public:
-        TransmitProcessThread(TargetClass *_target, float _delay) :
-            target(_target)
-        {
-            _mythread = 0;
-            _thread_running = false;
-            _udelay = (__useconds_t)(_delay * 1000000);
-        };
-
-        void interrupt(){
-            _mythread->interrupt();
-        }
-
-        // kick off the thread
-        void start() {
-            if (_mythread == 0) {
-                _thread_running = true;
-                _mythread = new boost::thread(&TransmitProcessThread::run, this);
-            }
-        };
-
-        // manage calls to target's service function
-        void run() {
-            int state = NORMAL;
-            while (_thread_running and (state != FINISH)) {
-                state = target->serviceFunctionTransmit();
-                if (state == NOOP) usleep(_udelay);
-            }
-        };
-
-        // stop thread and wait for termination
-        bool release(unsigned long secs = 0, unsigned long usecs = 0) {
-            _thread_running = false;
-            if (_mythread)  {
-                if ((secs == 0) and (usecs == 0)){
-                    _mythread->join();
-                } else {
-                    boost::system_time waitime= boost::get_system_time() + boost::posix_time::seconds(secs) +  boost::posix_time::microseconds(usecs) ;
-                    if (!_mythread->timed_join(waitime)) {
-                        return 0;
-                    }
-                }
-                delete _mythread;
-                _mythread = 0;
-            }
-
-            return 1;
-        };
-
-        virtual ~TransmitProcessThread(){
-            if (_mythread != 0) {
-                release(0);
-                _mythread = 0;
-            }
-        };
-
-        void updateDelay(float _delay) { _udelay = (__useconds_t)(_delay * 1000000); };
-
-    private:
-        boost::thread *_mythread;
-        bool _thread_running;
-        TargetClass *target;
-        __useconds_t _udelay;
-        boost::condition_variable _end_of_run;
-        boost::mutex _eor_mutex;
 };
 
 
@@ -278,8 +198,8 @@ class USRP_UHD_i : public USRP_UHD_base
 
         // serviceFunctionTransmit thread
         void interrupt(size_t tuner_id);
-        ReceiveProcessThread<USRP_UHD_i> *receive_service_thread;
-        TransmitProcessThread<USRP_UHD_i> *transmit_service_thread;
+        MultiProcessThread<USRP_UHD_i> *receive_service_thread;
+        MultiProcessThread<USRP_UHD_i> *transmit_service_thread;
         boost::mutex receive_service_thread_lock;
         boost::mutex transmit_service_thread_lock;
         template <class IN_PORT_TYPE> bool transmitHelper(IN_PORT_TYPE *dataIn);

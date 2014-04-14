@@ -279,8 +279,7 @@ void USRP_UHD_i::start() throw (CORBA::SystemException, CF::Resource::StartError
             if (receive_service_thread == NULL) {
                 dataShortTX_in->unblock();
                 dataFloatTX_in->unblock();
-                //receive_service_thread = new ReceiveProcessThread<USRP_UHD_i> (this, 0.1);
-                receive_service_thread = new ReceiveProcessThread<USRP_UHD_i> (this, 0.001);
+                receive_service_thread = new MultiProcessThread<USRP_UHD_i> (this, &USRP_UHD_i::serviceFunctionReceive, 0.001);
                 receive_service_thread->start();
             }
         }
@@ -289,15 +288,10 @@ void USRP_UHD_i::start() throw (CORBA::SystemException, CF::Resource::StartError
             if (transmit_service_thread == NULL) {
                 dataShortTX_in->unblock();
                 dataFloatTX_in->unblock();
-                //transmit_service_thread = new TransmitProcessThread<USRP_UHD_i> (this, 0.1);
-                transmit_service_thread = new TransmitProcessThread<USRP_UHD_i> (this, 0.001);
+                transmit_service_thread = new MultiProcessThread<USRP_UHD_i> (this, &USRP_UHD_i::serviceFunctionTransmit, 0.001);
                 transmit_service_thread->start();
             }
         }
-
-        //serviceThread->updateDelay(0.001);
-        //receive_service_thread->updateDelay(0.001);
-        //transmit_service_thread->updateDelay(0.001);
 
     } catch (...) {
         stop();
