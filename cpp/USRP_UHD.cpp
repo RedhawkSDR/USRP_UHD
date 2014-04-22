@@ -271,7 +271,7 @@ void USRP_UHD_i::start() throw (CORBA::SystemException, CF::Resource::StartError
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
     //USRP_UHD_base::start();
 
-    // Create additional transmit thread
+    // Create threads
     try {
 
         {
@@ -633,10 +633,12 @@ void USRP_UHD_i::updateGroupId(std::string group){
 /* This sets the number of entries in the frontend_tuner_status struct sequence property
  * as well as the tuner_allocation_ids vector. Only call this function during initialization
  */
-void USRP_UHD_i::setNumChannels(size_t num){
-    USRP_UHD_base::setNumChannels(num);
+void USRP_UHD_i::setNumChannels(size_t num_rx, size_t num_tx){
+    USRP_UHD_base::setNumChannels(num_rx+num_tx);
     usrp_tuners.clear();
-    usrp_tuners.resize(num);
+    usrp_tuners.resize(num_rx+num_tx);
+    usrp_rx_streamers.resize(num_rx);
+    usrp_tx_streamers.resize(num_tx);
 }
 
 ///////////////////////////////
@@ -901,7 +903,10 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
         updateDeviceInfo();
 
         // Initialize tasking and status vectors
-        setNumChannels(device_channels.size());
+        //setNumChannels(device_channels.size());
+        size_t num_rx_channels = usrp_device_ptr->get_rx_num_channels();
+        size_t num_tx_channels = usrp_device_ptr->get_tx_num_channels();
+        setNumChannels(num_rx_channels,num_tx_channels);
 
         //Initialize Data Members
         long source_prop = 0;
@@ -1128,60 +1133,30 @@ void USRP_UHD_i::updateDeviceReferenceSource(std::string source){
 /* acquire tuner_lock prior to calling this function *
  * this function will block up to "timeout" seconds
  */
-bool USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
+long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id);
 
     // calc num samps to rx based on timeout, sr, and buffer size
-    size_t samps_to_rx = std::min(
-            size_t(timeout*frontend_tuner_status[tuner_id].sample_rate),
-            size_t((usrp_tuners[tuner_id].buffer_capacity-usrp_tuners[tuner_id].buffer_size) / 2));
+    size_t samps_to_rx = size_t((usrp_tuners[tuner_id].buffer_capacity-usrp_tuners[tuner_id].buffer_size) / 2);
+    if( timeout > 0 ){
+    	samps_to_rx = std::min(samps_to_rx, size_t(timeout*frontend_tuner_status[tuner_id].sample_rate));
+    }
 
     uhd::rx_metadata_t _metadata;
-    size_t num_samps = usrp_device_ptr->get_device()->recv(
-            &usrp_tuners[tuner_id].output_buffer.at(usrp_tuners[tuner_id].buffer_size), // address of buffer to start filling data
-            samps_to_rx,
-            _metadata,
-            uhd::io_type_t::COMPLEX_INT16,
-            uhd::device::RECV_MODE_FULL_BUFF);
-    usrp_tuners[tuner_id].buffer_size += (num_samps*2);
 
-//        /* TODO -- replace line above with new method below, allowing 8- or 16-bit CI data from USRP*/
-//        /* TODO -- also allows specification of which channel to receive from, rather than defaulting to 0*/
-//        /* TODO -- similar code to replace TX code*/
-//
-//        // do this during initUsrp
-//        //create a receive streamer
-//        /*!
-//         * The CPU format is a string that describes the format of host memory.
-//         * Conversions for the following CPU formats have been implemented:
-//         *  - fc64 - complex<double>
-//         *  - fc32 - complex<float>
-//         *  - sc16 - complex<int16_t>
-//         *  - sc8 - complex<int8_t>
-//         */
-//        std::string cpu_format = "sc16";
-//
-//        /*!
-//         * The OTW format is a string that describes the format over-the-wire.
-//         * The following over-the-wire formats have been implemented:
-//         *  - sc16 - Q16 I16
-//         *  - sc8 - Q8_1 I8_1 Q8_0 I8_0
-//         */
-//        std::string wire_format = "sc8";
-//
-//        uhd::stream_args_t stream_args(cpu_format,wire_format);
-//        stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
-//        uhd::rx_streamer::sptr rx_stream = usrp_device_ptr->get_rx_stream(stream_args);
-//
-//        // this is for the deviceEnable function (similar needed in deviceDisable function)
-//        uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
-//        stream_cmd.num_samps = 0;
-//        stream_cmd.stream_now = true;
-//        stream_cmd.time_spec = uhd::time_spec_t();
-//        usrp_device_ptr->issue_stream_cmd(stream_cmd, chan);
-//
-//        size_t num_samps = rx_stream->recv(&usrp_tuners[tuner_id].output_buffer.front(), usrp_tuners[tuner_id].output_buffer.size() / 2, _metadata, 3.0);
-//        /* END TODO */
+	/* TODO -- allow 8- or 16-bit CI data from USRP*/
+	/* TODO -- similar code to replace TX code*/
+    if (usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
+    	usrpCreateRxStream(tuner_id);
+		LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
+    }
+
+	size_t num_samps = usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number]->recv(
+			&usrp_tuners[tuner_id].output_buffer.at(usrp_tuners[tuner_id].buffer_size), // address of buffer to start filling data
+			samps_to_rx,
+			_metadata);
+	LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " num_samps=" << num_samps);
+	usrp_tuners[tuner_id].buffer_size += (num_samps*2);
 
     //handle possible errors conditions
     switch (_metadata.error_code) {
@@ -1189,18 +1164,19 @@ bool USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
             break;
         case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT:
             LOG_WARN(USRP_UHD_i,"WARNING: TIMEOUT OCCURED ON USRP RECEIVE! (received num_samps=" << num_samps << ")");
-            return false;
+            return 0;
         case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW:
             LOG_WARN(USRP_UHD_i,"WARNING: USRP OVERFLOW DETECTED!");
             // may have received data, but 0 is returned by usrp recv function so we don't know how many samples, must throw away
-            return true; // this will just cause us to return NORMAL so there's no wait before next iteration
+            return -1; // this will just cause us to return NORMAL so there's no wait before next iteration
         default:
             LOG_WARN(USRP_UHD_i,"WARNING: UHD source block got error code 0x" << _metadata.error_code);
-            return false;
+            return 0;
     }
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " after error switch");
 
     if(num_samps == 0)
-        return false;
+        return 0;
 
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "  received data.  num_samps=" << num_samps
                                          << "  buffer_size=" << usrp_tuners[tuner_id].buffer_size
@@ -1216,7 +1192,7 @@ bool USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
         usrp_tuners[tuner_id].time_down = usrp_tuners[tuner_id].output_buffer_time;
     }
 
-    return true;
+    return num_samps;
 }
 
 
@@ -1290,7 +1266,23 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
             usrp_tuners[tuner_id].update_sri = false;
         }
 
-        usrp_device_ptr->issue_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS, frontend_tuner_status[tuner_id].tuner_number);
+
+    	/* TODO -- allow 8- or 16-bit CI data from USRP*/
+    	/* TODO -- similar code to replace TX code*/
+        if (usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
+        	usrpCreateRxStream(tuner_id);
+    		LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
+        }
+
+        // check for lo_lock
+        for(size_t i=0; i<10 && !usrp_device_ptr->get_rx_sensor("lo_locked",frontend_tuner_status[tuner_id].tuner_number).to_bool(); i++){
+        	sleep(0.1);
+        }
+
+        uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
+        stream_cmd.stream_now = true;
+        usrp_device_ptr->issue_stream_cmd(stream_cmd, frontend_tuner_status[tuner_id].tuner_number);
+        //usrp_device_ptr->issue_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS, frontend_tuner_status[tuner_id].tuner_number);
         LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " started stream_id=" << stream_id);
     }
     return true;
@@ -1305,6 +1297,7 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
 
     if(frontend_tuner_status[tuner_id].tuner_type != "TX"){
         usrp_device_ptr->issue_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS,frontend_tuner_status[tuner_id].tuner_number);
+
 
         if(prev_enabled){
             // get stream id (creates one if not already created for this tuner)
@@ -1331,6 +1324,35 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
         bulkio::sri::zeroTime(usrp_tuners[tuner_id].time_down);
     }
     return true;
+}
+
+bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
+	//cleanup possible old one
+	usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].reset();
+
+	/*!
+	 * The CPU format is a string that describes the format of host memory.
+	 * Conversions for the following CPU formats have been implemented:
+	 *  - fc64 - complex<double>
+	 *  - fc32 - complex<float>
+	 *  - sc16 - complex<int16_t>
+	 *  - sc8 - complex<int8_t>
+	 */
+	std::string cpu_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
+
+	/*!
+	 * The OTW format is a string that describes the format over-the-wire.
+	 * The following over-the-wire formats have been implemented:
+	 *  - sc16 - Q16 I16
+	 *  - sc8 - Q8_1 I8_1 Q8_0 I8_0
+	 */
+	std::string wire_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
+
+	uhd::stream_args_t stream_args(cpu_format,wire_format);
+	stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
+	stream_args.args["noclear"] = "1";
+	usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number] = usrp_device_ptr->get_rx_stream(stream_args);
+	return true;
 }
 
 /*************************************************************

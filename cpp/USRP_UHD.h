@@ -5,6 +5,7 @@
 
 #include <uhd/usrp/multi_usrp.hpp>
 
+
 /*********************************************************************************************/
 /**************************        Multi Process Thread Class       **************************/
 /*********************************************************************************************/
@@ -216,7 +217,7 @@ class USRP_UHD_i : public USRP_UHD_base
         void updateGroupId(std::string group);
 
         // override base class functions
-        void setNumChannels(size_t num);
+        void setNumChannels(size_t num_rx, size_t num_tx);
 
         // configure callbacks
         void updateAvailableDevicesChanged(const bool* old_value, const bool* new_value);
@@ -243,14 +244,18 @@ class USRP_UHD_i : public USRP_UHD_base
         void updateDeviceRxGain(double gain);
         void updateDeviceTxGain(double gain);
         void updateDeviceReferenceSource(std::string source);
-        bool usrpReceive(size_t tuner_id, double timeout = 1.0);
+        long usrpReceive(size_t tuner_id, double timeout = 0.0);
         template <class PACKET_TYPE> bool usrpTransmit(size_t tuner_id, PACKET_TYPE *packet);
         bool usrpEnable(size_t tuner_id);
         bool usrpDisable(size_t tuner_id);
+        bool usrpCreateRxStream(size_t tuner_id);
 
         // UHD driver specific
         uhd::usrp::multi_usrp::sptr usrp_device_ptr;
         uhd::device_addr_t usrp_device_addr;
+        std::vector<uhd::rx_streamer::sptr> usrp_rx_streamers;
+        std::vector<uhd::rx_streamer::sptr> usrp_tx_streamers;
+
     protected:
         void construct();
 };
