@@ -215,32 +215,40 @@ int USRP_UHD_i::serviceFunctionReceive()
             continue;
         }
 
-        if(usrpReceive(tuner_id)){
+        long num_samps = usrpReceive(tuner_id, 1.0); // 1 second timeout
+        // if the buffer is full OR (overflow occurred and buffer isn't empty), push buffer out as is and move to next buffer
+        if(usrp_tuners[tuner_id].buffer_size >= usrp_tuners[tuner_id].buffer_capacity ||
+                        (num_samps < 0 && usrp_tuners[tuner_id].buffer_size > 0) ){
             rx_data = true;
-        } else {
-            continue;
+
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "  pushing buffer of " << usrp_tuners[tuner_id].buffer_size/2 << " samples");
+
+            // get stream id (creates one if not already created for this tuner)
+            std::string stream_id = getStreamId(tuner_id);
+
+            // Send updated SRI
+            if (usrp_tuners[tuner_id].update_sri){
+                BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
+                sri.mode = 1; // complex
+                dataShort_out->pushSRI(sri);
+                usrp_tuners[tuner_id].update_sri = false;
+            }
+
+            // Pushing Data
+            // handle partial packet (b/c overflow occured)
+            if(usrp_tuners[tuner_id].buffer_size < usrp_tuners[tuner_id].buffer_capacity){
+                usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_size);
+            }
+            dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
+            // restore buffer size if necessary
+            if(usrp_tuners[tuner_id].buffer_size < usrp_tuners[tuner_id].buffer_capacity){
+                usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_capacity);
+            }
+            usrp_tuners[tuner_id].buffer_size = 0;
+            
+        } else if(num_samps != 0){ // either received data or overflow occurred, either way data is available
+            rx_data = true;
         }
-
-        if (usrp_tuners[tuner_id].buffer_capacity > usrp_tuners[tuner_id].buffer_size){
-            continue;
-        }
-
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "  pushing buffer of " << usrp_tuners[tuner_id].buffer_size/2 << " samples");
-
-        // get stream id (creates one if not already created for this tuner)
-        std::string stream_id = getStreamId(tuner_id);
-
-        // Send updated SRI
-        if (usrp_tuners[tuner_id].update_sri){
-            BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
-            sri.mode = 1; // complex
-            dataShort_out->pushSRI(sri);
-            usrp_tuners[tuner_id].update_sri = false;
-        }
-
-        // Pushing Data
-        dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
-        usrp_tuners[tuner_id].buffer_size = 0;
     }
 
     if(rx_data)
