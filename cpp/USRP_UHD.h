@@ -253,12 +253,14 @@ class USRP_UHD_i : public USRP_UHD_base
         bool usrpEnable(size_t tuner_id);
         bool usrpDisable(size_t tuner_id);
         bool usrpCreateRxStream(size_t tuner_id);
+        template <class PACKET_ELEMENT_TYPE> bool usrpCreateTxStream(size_t tuner_id);
 
         // UHD driver specific
         uhd::usrp::multi_usrp::sptr usrp_device_ptr;
         uhd::device_addr_t usrp_device_addr;
         std::vector<uhd::rx_streamer::sptr> usrp_rx_streamers;
-        std::vector<uhd::rx_streamer::sptr> usrp_tx_streamers;
+        std::vector<uhd::tx_streamer::sptr> usrp_tx_streamers;
+        std::vector<size_t> usrp_tx_streamer_typesize;
 
     protected:
         void construct();

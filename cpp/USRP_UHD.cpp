@@ -647,6 +647,7 @@ void USRP_UHD_i::setNumChannels(size_t num_rx, size_t num_tx){
     usrp_tuners.resize(num_rx+num_tx);
     usrp_rx_streamers.resize(num_rx);
     usrp_tx_streamers.resize(num_tx);
+    usrp_tx_streamer_typesize.resize(num_tx);
 }
 
 ///////////////////////////////
@@ -1152,8 +1153,6 @@ long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
 
     uhd::rx_metadata_t _metadata;
 
-    /* TODO -- allow 8- or 16-bit CI data from USRP*/
-    /* TODO -- similar code to replace TX code*/
     if (usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
         usrpCreateRxStream(tuner_id);
         LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
@@ -1225,18 +1224,16 @@ template <class PACKET_TYPE> bool USRP_UHD_i::usrpTransmit(size_t tuner_id, PACK
     _metadata.start_of_burst = false;
     _metadata.end_of_burst = false;
 
-    // Send in size/2 because it is complex
-    if (sizeof (PACKET_ELEMENT_TYPE) == 2){
-        if( usrp_device_ptr->get_device()->send(&packet->dataBuffer.front(), packet->dataBuffer.size() / 2, _metadata, uhd::io_type_t::COMPLEX_INT16, uhd::device::SEND_MODE_FULL_BUFF) != packet->dataBuffer.size() / 2){
-            LOG_WARN(USRP_UHD_i, "WARNING: THE USRP WAS UNABLE TO TRANSMIT " << size_t(packet->dataBuffer.size()) / 2 << " NUMBER OF COMPLEX SHORT SAMPLES!");
-            return false;
-        }
+    if (usrp_tx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL ||
+            sizeof(PACKET_ELEMENT_TYPE) != usrp_tx_streamer_typesize[frontend_tuner_status[tuner_id].tuner_number]){
+        usrpCreateTxStream<PACKET_ELEMENT_TYPE>(tuner_id);
+        LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got tx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
     }
-    else if (sizeof (PACKET_ELEMENT_TYPE) == 4){
-        if( usrp_device_ptr->get_device()->send(&packet->dataBuffer.front(), packet->dataBuffer.size() / 2, _metadata, uhd::io_type_t::COMPLEX_FLOAT32, uhd::device::SEND_MODE_FULL_BUFF) != packet->dataBuffer.size() / 2){
-            LOG_WARN(USRP_UHD_i, "WARNING: THE USRP WAS UNABLE TO TRANSMIT " << size_t(packet->dataBuffer.size()) / 2 << " NUMBER OF COMPLEX FLOAT SAMPLES!");
-            return false;
-        }
+
+    // Send in size/2 because it is complex
+    if( usrp_tx_streamers[frontend_tuner_status[tuner_id].tuner_number]->send(&packet->dataBuffer.front(), packet->dataBuffer.size() / 2, _metadata, 0.1) != packet->dataBuffer.size() / 2){
+        LOG_WARN(USRP_UHD_i, "WARNING: THE USRP WAS UNABLE TO TRANSMIT " << size_t(packet->dataBuffer.size()) / 2 << " NUMBER OF SAMPLES!");
+        return false;
     }
     return true;
 }
@@ -1260,6 +1257,11 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
             usrp_tuners[tuner_id].update_sri = false;
         }
 
+        if (usrp_tx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
+            usrpCreateTxStream<short>(tuner_id); // assume short for now since we don't know until data is received over a port
+            LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got tx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
+        }
+
     } else {
 
         // get stream id (creates one if not already created for this tuner)
@@ -1274,9 +1276,6 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
             usrp_tuners[tuner_id].update_sri = false;
         }
 
-
-        /* TODO -- allow 8- or 16-bit CI data from USRP*/
-        /* TODO -- similar code to replace TX code*/
         if (usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
             usrpCreateRxStream(tuner_id);
             LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
@@ -1346,7 +1345,7 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
      *  - sc16 - complex<int16_t>
      *  - sc8 - complex<int8_t>
      */
-    std::string cpu_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
+    std::string cpu_format = "sc16"; // complex dataShort
 
     /*!
      * The OTW format is a string that describes the format over-the-wire.
@@ -1360,6 +1359,42 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
     stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
     stream_args.args["noclear"] = "1";
     usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number] = usrp_device_ptr->get_rx_stream(stream_args);
+    return true;
+}
+
+template <class PACKET_ELEMENT_TYPE>
+bool USRP_UHD_i::usrpCreateTxStream(size_t tuner_id){
+    //cleanup possible old one
+    usrp_tx_streamers[frontend_tuner_status[tuner_id].tuner_number].reset();
+
+    /*!
+     * The CPU format is a string that describes the format of host memory.
+     * Conversions for the following CPU formats have been implemented:
+     *  - fc64 - complex<double>
+     *  - fc32 - complex<float>
+     *  - sc16 - complex<int16_t>
+     *  - sc8 - complex<int8_t>
+     */
+
+    std::string cpu_format = "sc16";
+    usrp_tx_streamer_typesize[frontend_tuner_status[tuner_id].tuner_number] = sizeof(PACKET_ELEMENT_TYPE);
+    if (sizeof (PACKET_ELEMENT_TYPE) == 4){
+        cpu_format = "fc32"; // enable sending dataFloat with "fc32"
+        usrp_tx_streamer_typesize[frontend_tuner_status[tuner_id].tuner_number] = sizeof(PACKET_ELEMENT_TYPE);
+    }
+
+    /*!
+     * The OTW format is a string that describes the format over-the-wire.
+     * The following over-the-wire formats have been implemented:
+     *  - sc16 - Q16 I16
+     *  - sc8 - Q8_1 I8_1 Q8_0 I8_0
+     */
+    std::string wire_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
+
+    uhd::stream_args_t stream_args(cpu_format,wire_format);
+    stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
+    stream_args.args["noclear"] = "1";
+    usrp_tx_streamers[frontend_tuner_status[tuner_id].tuner_number] = usrp_device_ptr->get_tx_stream(stream_args);
     return true;
 }
 
