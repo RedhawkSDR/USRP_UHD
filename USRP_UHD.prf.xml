@@ -320,4 +320,22 @@ Please see the Frontend Interfaces v2.0 documentation for a full description. </
     </struct>
     <configurationkind kindtype="configure"/>
   </structsequence>
+  <simple id="device_rx_mode" mode="readwrite" name="device_rx_mode" type="string">
+    <value>16bit</value>
+    <enumerations>
+      <enumeration label="16bit" value="16bit"/>
+      <enumeration label="8bit" value="8bit"/>
+    </enumerations>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
+  <simple id="device_tx_mode" mode="readwrite" name="device_tx_mode" type="string">
+    <value>16bit</value>
+    <enumerations>
+      <enumeration label="16bit" value="16bit"/>
+      <enumeration label="8bit" value="8bit"/>
+    </enumerations>
+    <kind kindtype="configure"/>
+    <action type="external"/>
+  </simple>
 </properties>

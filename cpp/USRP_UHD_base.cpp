@@ -165,6 +165,24 @@ void USRP_UHD_base::loadProperties()
                 "external",
                 "configure");
 
+    addProperty(device_rx_mode,
+                "16bit",
+                "device_rx_mode",
+                "device_rx_mode",
+                "readwrite",
+                "",
+                "external",
+                "configure");
+
+    addProperty(device_tx_mode,
+                "16bit",
+                "device_tx_mode",
+                "device_tx_mode",
+                "readwrite",
+                "",
+                "external",
+                "configure");
+
     frontend_listener_allocation = frontend::frontend_listener_allocation_struct();
     frontend_tuner_allocation = frontend::frontend_tuner_allocation_struct();
     addProperty(connectionTable,

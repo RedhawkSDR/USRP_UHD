@@ -47,6 +47,8 @@ class USRP_UHD_base : public frontend::FrontendTunerDevice<frontend_tuner_status
         float device_rx_gain_global;
         float device_tx_gain_global;
         std::string device_group_id_global;
+        std::string device_rx_mode;
+        std::string device_tx_mode;
         std::vector<connection_descriptor_struct> connectionTable;
         std::vector<usrp_device_struct> available_devices;
         std::vector<usrp_channel_struct> device_channels;
