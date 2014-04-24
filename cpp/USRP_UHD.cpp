@@ -1333,6 +1333,8 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
     return true;
 }
 
+/* acquire tuner_lock prior to calling this function *
+ */
 bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
     //cleanup possible old one
     usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].reset();
@@ -1362,6 +1364,8 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
     return true;
 }
 
+/* acquire tuner_lock prior to calling this function *
+ */
 template <class PACKET_ELEMENT_TYPE>
 bool USRP_UHD_i::usrpCreateTxStream(size_t tuner_id){
     //cleanup possible old one
