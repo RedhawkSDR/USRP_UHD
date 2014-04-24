@@ -368,7 +368,7 @@ void USRP_UHD_i::construct()
     rx_rfinfo_pkt.rf_flow_id = "USRP_RX_FLOW_ID_NOT_SET";
     tx_rfinfo_pkt.rf_flow_id = "USRP_TX_FLOW_ID_NOT_SET";
 
-    USRP_UHD_base::construct();
+    //USRP_UHD_base::construct();
     /***********************************************************************************
      this function is invoked in the constructor
     ***********************************************************************************/

@@ -8,27 +8,30 @@
 *******************************************************************************************/
 
 #include <ossie/CorbaUtils.h>
-#include <ossie/PropertyInterface.h>
-#include <frontend/fe_tuner_struct_props.h>
- 
 #include <bulkio/bulkio.h>
 typedef bulkio::connection_descriptor_struct connection_descriptor_struct;
 
-struct frontend_tuner_status_struct_struct : frontend::default_frontend_tuner_status_struct_struct{
-    frontend_tuner_status_struct_struct () : default_frontend_tuner_status_struct_struct()
+#include <frontend/fe_tuner_struct_props.h>
+
+struct frontend_tuner_status_struct_struct : public frontend::default_frontend_tuner_status_struct_struct {
+    frontend_tuner_status_struct_struct () : frontend::default_frontend_tuner_status_struct_struct()
     {
     };
- 
-    std::string available_bandwidth; 
-    std::string available_frequency; 
-    std::string available_gain; 
-    std::string available_sample_rate; 
-    double bandwidth_tolerance; 
-    bool complex; 
-    double gain; 
-    CORBA::Long reference_source; 
-    double sample_rate_tolerance; 
-    short tuner_number; 
+
+    static std::string getId() {
+        return std::string("FRONTEND::tuner_status_struct");
+    };
+
+    std::string available_bandwidth;
+    std::string available_frequency;
+    std::string available_gain;
+    std::string available_sample_rate;
+    double bandwidth_tolerance;
+    bool complex;
+    double gain;
+    CORBA::Long reference_source;
+    double sample_rate_tolerance;
+    short tuner_number;
     bool valid;
 };
 
@@ -40,58 +43,58 @@ inline bool operator>>= (const CORBA::Any& a, frontend_tuner_status_struct_struc
         if (!strcmp("FRONTEND::tuner_status::allocation_id_csv", props[idx].id)) {
             if (!(props[idx].value >>= s.allocation_id_csv)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::available_bandwidth", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::available_bandwidth", props[idx].id)) {
             if (!(props[idx].value >>= s.available_bandwidth)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::available_frequency", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::available_frequency", props[idx].id)) {
             if (!(props[idx].value >>= s.available_frequency)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::available_gain", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::available_gain", props[idx].id)) {
             if (!(props[idx].value >>= s.available_gain)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::available_sample_rate", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::available_sample_rate", props[idx].id)) {
             if (!(props[idx].value >>= s.available_sample_rate)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::bandwidth", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::bandwidth", props[idx].id)) {
             if (!(props[idx].value >>= s.bandwidth)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::bandwidth_tolerance", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::bandwidth_tolerance", props[idx].id)) {
             if (!(props[idx].value >>= s.bandwidth_tolerance)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::center_frequency", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::center_frequency", props[idx].id)) {
             if (!(props[idx].value >>= s.center_frequency)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::complex", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::complex", props[idx].id)) {
             if (!(props[idx].value >>= s.complex)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::enabled", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::enabled", props[idx].id)) {
             if (!(props[idx].value >>= s.enabled)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::gain", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::gain", props[idx].id)) {
             if (!(props[idx].value >>= s.gain)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::group_id", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::group_id", props[idx].id)) {
             if (!(props[idx].value >>= s.group_id)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::reference_source", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::reference_source", props[idx].id)) {
             if (!(props[idx].value >>= s.reference_source)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::rf_flow_id", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::rf_flow_id", props[idx].id)) {
             if (!(props[idx].value >>= s.rf_flow_id)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::sample_rate", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::sample_rate", props[idx].id)) {
             if (!(props[idx].value >>= s.sample_rate)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::sample_rate_tolerance", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::sample_rate_tolerance", props[idx].id)) {
             if (!(props[idx].value >>= s.sample_rate_tolerance)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::tuner_number", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::tuner_number", props[idx].id)) {
             if (!(props[idx].value >>= s.tuner_number)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::tuner_type", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::tuner_type", props[idx].id)) {
             if (!(props[idx].value >>= s.tuner_type)) return false;
         }
-        if (!strcmp("FRONTEND::tuner_status::valid", props[idx].id)) {
+        else if (!strcmp("FRONTEND::tuner_status::valid", props[idx].id)) {
             if (!(props[idx].value >>= s.valid)) return false;
         }
     }
@@ -187,6 +190,7 @@ inline bool operator== (const frontend_tuner_status_struct_struct& s1, const fro
 inline bool operator!= (const frontend_tuner_status_struct_struct& s1, const frontend_tuner_status_struct_struct& s2) {
     return !(s1==s2);
 };
+
 struct usrp_device_struct {
     usrp_device_struct ()
     {
@@ -210,13 +214,13 @@ inline bool operator>>= (const CORBA::Any& a, usrp_device_struct& s) {
         if (!strcmp("available_devices::type", props[idx].id)) {
             if (!(props[idx].value >>= s.type)) return false;
         }
-        if (!strcmp("available_devices::ip_address", props[idx].id)) {
+        else if (!strcmp("available_devices::ip_address", props[idx].id)) {
             if (!(props[idx].value >>= s.ip_address)) return false;
         }
-        if (!strcmp("available_devices::name", props[idx].id)) {
+        else if (!strcmp("available_devices::name", props[idx].id)) {
             if (!(props[idx].value >>= s.name)) return false;
         }
-        if (!strcmp("available_devices::serial", props[idx].id)) {
+        else if (!strcmp("available_devices::serial", props[idx].id)) {
             if (!(props[idx].value >>= s.serial)) return false;
         }
     }
@@ -252,6 +256,7 @@ inline bool operator== (const usrp_device_struct& s1, const usrp_device_struct& 
 inline bool operator!= (const usrp_device_struct& s1, const usrp_device_struct& s2) {
     return !(s1==s2);
 };
+
 struct usrp_channel_struct {
     usrp_channel_struct ()
     {
@@ -289,55 +294,55 @@ inline bool operator>>= (const CORBA::Any& a, usrp_channel_struct& s) {
         if (!strcmp("device_channels::ch_name", props[idx].id)) {
             if (!(props[idx].value >>= s.ch_name)) return false;
         }
-        if (!strcmp("device_channels::tuner_type", props[idx].id)) {
+        else if (!strcmp("device_channels::tuner_type", props[idx].id)) {
             if (!(props[idx].value >>= s.tuner_type)) return false;
         }
-        if (!strcmp("device_channels::chan_num", props[idx].id)) {
+        else if (!strcmp("device_channels::chan_num", props[idx].id)) {
             if (!(props[idx].value >>= s.chan_num)) return false;
         }
-        if (!strcmp("device_channels::antenna", props[idx].id)) {
+        else if (!strcmp("device_channels::antenna", props[idx].id)) {
             if (!(props[idx].value >>= s.antenna)) return false;
         }
-        if (!strcmp("device_channels::bandwidth_current", props[idx].id)) {
+        else if (!strcmp("device_channels::bandwidth_current", props[idx].id)) {
             if (!(props[idx].value >>= s.bandwidth_current)) return false;
         }
-        if (!strcmp("device_channels::bandwidth_min", props[idx].id)) {
+        else if (!strcmp("device_channels::bandwidth_min", props[idx].id)) {
             if (!(props[idx].value >>= s.bandwidth_min)) return false;
         }
-        if (!strcmp("device_channels::bandwidth_max", props[idx].id)) {
+        else if (!strcmp("device_channels::bandwidth_max", props[idx].id)) {
             if (!(props[idx].value >>= s.bandwidth_max)) return false;
         }
-        if (!strcmp("device_channels::rate_current", props[idx].id)) {
+        else if (!strcmp("device_channels::rate_current", props[idx].id)) {
             if (!(props[idx].value >>= s.rate_current)) return false;
         }
-        if (!strcmp("device_channels::rate_min", props[idx].id)) {
+        else if (!strcmp("device_channels::rate_min", props[idx].id)) {
             if (!(props[idx].value >>= s.rate_min)) return false;
         }
-        if (!strcmp("device_channels::rate_max", props[idx].id)) {
+        else if (!strcmp("device_channels::rate_max", props[idx].id)) {
             if (!(props[idx].value >>= s.rate_max)) return false;
         }
-        if (!strcmp("device_channels::freq_current", props[idx].id)) {
+        else if (!strcmp("device_channels::freq_current", props[idx].id)) {
             if (!(props[idx].value >>= s.freq_current)) return false;
         }
-        if (!strcmp("device_channels::freq_min", props[idx].id)) {
+        else if (!strcmp("device_channels::freq_min", props[idx].id)) {
             if (!(props[idx].value >>= s.freq_min)) return false;
         }
-        if (!strcmp("device_channels::freq_max", props[idx].id)) {
+        else if (!strcmp("device_channels::freq_max", props[idx].id)) {
             if (!(props[idx].value >>= s.freq_max)) return false;
         }
-        if (!strcmp("device_channels::gain_current", props[idx].id)) {
+        else if (!strcmp("device_channels::gain_current", props[idx].id)) {
             if (!(props[idx].value >>= s.gain_current)) return false;
         }
-        if (!strcmp("device_channels::gain_min", props[idx].id)) {
+        else if (!strcmp("device_channels::gain_min", props[idx].id)) {
             if (!(props[idx].value >>= s.gain_min)) return false;
         }
-        if (!strcmp("device_channels::gain_max", props[idx].id)) {
+        else if (!strcmp("device_channels::gain_max", props[idx].id)) {
             if (!(props[idx].value >>= s.gain_max)) return false;
         }
-        if (!strcmp("device_channels::clock_min", props[idx].id)) {
+        else if (!strcmp("device_channels::clock_min", props[idx].id)) {
             if (!(props[idx].value >>= s.clock_min)) return false;
         }
-        if (!strcmp("device_channels::clock_max", props[idx].id)) {
+        else if (!strcmp("device_channels::clock_max", props[idx].id)) {
             if (!(props[idx].value >>= s.clock_max)) return false;
         }
     }
@@ -429,6 +434,7 @@ inline bool operator== (const usrp_channel_struct& s1, const usrp_channel_struct
 inline bool operator!= (const usrp_channel_struct& s1, const usrp_channel_struct& s2) {
     return !(s1==s2);
 };
+
 struct usrp_motherboard_struct {
     usrp_motherboard_struct ()
     {
@@ -450,7 +456,7 @@ inline bool operator>>= (const CORBA::Any& a, usrp_motherboard_struct& s) {
         if (!strcmp("device_motherboards::mb_name", props[idx].id)) {
             if (!(props[idx].value >>= s.mb_name)) return false;
         }
-        if (!strcmp("device_motherboards::mb_ip", props[idx].id)) {
+        else if (!strcmp("device_motherboards::mb_ip", props[idx].id)) {
             if (!(props[idx].value >>= s.mb_ip)) return false;
         }
     }

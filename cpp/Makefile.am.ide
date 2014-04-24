@@ -8,7 +8,5 @@ redhawk_SOURCES_auto += USRP_UHD.h
 redhawk_SOURCES_auto += USRP_UHD_base.cpp
 redhawk_SOURCES_auto += USRP_UHD_base.h
 redhawk_SOURCES_auto += main.cpp
-redhawk_SOURCES_auto += port_impl.cpp
-redhawk_SOURCES_auto += port_impl.h
 redhawk_SOURCES_auto += struct_props.h
 redhawk_SOURCES_auto += template_impl.cpp
