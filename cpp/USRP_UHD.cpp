@@ -1147,24 +1147,24 @@ long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
     // calc num samps to rx based on timeout, sr, and buffer size
     size_t samps_to_rx = size_t((usrp_tuners[tuner_id].buffer_capacity-usrp_tuners[tuner_id].buffer_size) / 2);
     if( timeout > 0 ){
-    	samps_to_rx = std::min(samps_to_rx, size_t(timeout*frontend_tuner_status[tuner_id].sample_rate));
+        samps_to_rx = std::min(samps_to_rx, size_t(timeout*frontend_tuner_status[tuner_id].sample_rate));
     }
 
     uhd::rx_metadata_t _metadata;
 
-	/* TODO -- allow 8- or 16-bit CI data from USRP*/
-	/* TODO -- similar code to replace TX code*/
+    /* TODO -- allow 8- or 16-bit CI data from USRP*/
+    /* TODO -- similar code to replace TX code*/
     if (usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
-    	usrpCreateRxStream(tuner_id);
-		LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
+        usrpCreateRxStream(tuner_id);
+        LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
     }
 
-	size_t num_samps = usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number]->recv(
-			&usrp_tuners[tuner_id].output_buffer.at(usrp_tuners[tuner_id].buffer_size), // address of buffer to start filling data
-			samps_to_rx,
-			_metadata);
-	LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " num_samps=" << num_samps);
-	usrp_tuners[tuner_id].buffer_size += (num_samps*2);
+    size_t num_samps = usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number]->recv(
+            &usrp_tuners[tuner_id].output_buffer.at(usrp_tuners[tuner_id].buffer_size), // address of buffer to start filling data
+            samps_to_rx,
+            _metadata);
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " num_samps=" << num_samps);
+    usrp_tuners[tuner_id].buffer_size += (num_samps*2);
 
     //handle possible errors conditions
     switch (_metadata.error_code) {
@@ -1275,16 +1275,16 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
         }
 
 
-    	/* TODO -- allow 8- or 16-bit CI data from USRP*/
-    	/* TODO -- similar code to replace TX code*/
+        /* TODO -- allow 8- or 16-bit CI data from USRP*/
+        /* TODO -- similar code to replace TX code*/
         if (usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
-        	usrpCreateRxStream(tuner_id);
-    		LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
+            usrpCreateRxStream(tuner_id);
+            LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
         }
 
         // check for lo_lock
         for(size_t i=0; i<10 && !usrp_device_ptr->get_rx_sensor("lo_locked",frontend_tuner_status[tuner_id].tuner_number).to_bool(); i++){
-        	sleep(0.1);
+            sleep(0.1);
         }
 
         uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
@@ -1335,32 +1335,32 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
 }
 
 bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
-	//cleanup possible old one
-	usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].reset();
+    //cleanup possible old one
+    usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].reset();
 
-	/*!
-	 * The CPU format is a string that describes the format of host memory.
-	 * Conversions for the following CPU formats have been implemented:
-	 *  - fc64 - complex<double>
-	 *  - fc32 - complex<float>
-	 *  - sc16 - complex<int16_t>
-	 *  - sc8 - complex<int8_t>
-	 */
-	std::string cpu_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
+    /*!
+     * The CPU format is a string that describes the format of host memory.
+     * Conversions for the following CPU formats have been implemented:
+     *  - fc64 - complex<double>
+     *  - fc32 - complex<float>
+     *  - sc16 - complex<int16_t>
+     *  - sc8 - complex<int8_t>
+     */
+    std::string cpu_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
 
-	/*!
-	 * The OTW format is a string that describes the format over-the-wire.
-	 * The following over-the-wire formats have been implemented:
-	 *  - sc16 - Q16 I16
-	 *  - sc8 - Q8_1 I8_1 Q8_0 I8_0
-	 */
-	std::string wire_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
+    /*!
+     * The OTW format is a string that describes the format over-the-wire.
+     * The following over-the-wire formats have been implemented:
+     *  - sc16 - Q16 I16
+     *  - sc8 - Q8_1 I8_1 Q8_0 I8_0
+     */
+    std::string wire_format = "sc16"; // TODO - enable 8-bit mode with "sc8"
 
-	uhd::stream_args_t stream_args(cpu_format,wire_format);
-	stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
-	stream_args.args["noclear"] = "1";
-	usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number] = usrp_device_ptr->get_rx_stream(stream_args);
-	return true;
+    uhd::stream_args_t stream_args(cpu_format,wire_format);
+    stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
+    stream_args.args["noclear"] = "1";
+    usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number] = usrp_device_ptr->get_rx_stream(stream_args);
+    return true;
 }
 
 /*************************************************************
@@ -1371,10 +1371,10 @@ std::string USRP_UHD_i::get_rf_flow_id(const std::string& port_name){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name);
 
     if( port_name == "RFInfo_in"){
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         return rx_rfinfo_pkt.rf_flow_id;
     } else if( port_name == "RFInfoTX_out"){
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         return tx_rfinfo_pkt.rf_flow_id;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
@@ -1386,11 +1386,11 @@ void USRP_UHD_i::set_rf_flow_id(const std::string& port_name, const std::string&
 
     if( port_name == "RFInfo_in"){
         updateRxRfFlowId(id);
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         rx_rfinfo_pkt.rf_flow_id = id;
     } else if( port_name == "RFInfoTX_out"){
         updateTxRfFlowId(id);
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         tx_rfinfo_pkt.rf_flow_id = id;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
@@ -1402,10 +1402,10 @@ frontend::RFInfoPkt USRP_UHD_i::get_rfinfo_pkt(const std::string& port_name){
     frontend::RFInfoPkt tmp;
     frontend::RFInfoPkt* pkt;
     if( port_name == "RFInfo_in"){
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         pkt = &rx_rfinfo_pkt;
     } else if( port_name == "RFInfoTX_out"){
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         pkt = &tx_rfinfo_pkt;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
@@ -1438,7 +1438,7 @@ void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RF
 
     if( port_name == "RFInfo_in"){
         updateRxRfFlowId(pkt.rf_flow_id);
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         rx_rfinfo_pkt.rf_flow_id = pkt.rf_flow_id;
         rx_rfinfo_pkt.rf_center_freq = pkt.rf_center_freq;
         rx_rfinfo_pkt.rf_bandwidth = pkt.rf_bandwidth;
@@ -1461,7 +1461,7 @@ void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RF
         }
     } else if( port_name == "RFInfoTX_out"){
         updateTxRfFlowId(pkt.rf_flow_id);
-    	exclusive_lock lock(prop_lock);
+        exclusive_lock lock(prop_lock);
         tx_rfinfo_pkt.rf_flow_id = pkt.rf_flow_id;
         tx_rfinfo_pkt.rf_center_freq = pkt.rf_center_freq;
         tx_rfinfo_pkt.rf_bandwidth = pkt.rf_bandwidth;

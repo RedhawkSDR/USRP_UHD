@@ -19,7 +19,7 @@ class MultiProcessThread
 public:
     MultiProcessThread(TargetClass *_target, int (TargetClass::*_func)(),float _delay)
     {
-    	service_function = boost::bind(_func, _target);
+        service_function = boost::bind(_func, _target);
         _mythread = 0;
         _thread_running = false;
         _udelay = (__useconds_t)(_delay * 1000000);
