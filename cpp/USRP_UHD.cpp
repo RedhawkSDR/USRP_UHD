@@ -1357,7 +1357,7 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
      */
     std::string wire_format = "sc16";
     if(device_rx_mode == "8bit")
-    	wire_format = "sc8"; // enable 8-bit mode with "sc8"
+        wire_format = "sc8"; // enable 8-bit mode with "sc8"
 
     uhd::stream_args_t stream_args(cpu_format,wire_format);
     stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
@@ -1397,7 +1397,7 @@ bool USRP_UHD_i::usrpCreateTxStream(size_t tuner_id){
      */
     std::string wire_format = "sc16";
     if(device_tx_mode == "8bit")
-    	wire_format = "sc8"; // enable 8-bit mode with "sc8"
+        wire_format = "sc8"; // enable 8-bit mode with "sc8"
 
     uhd::stream_args_t stream_args(cpu_format,wire_format);
     stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
