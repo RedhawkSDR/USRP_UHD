@@ -1535,13 +1535,13 @@ Functions servicing the tuner control port
 std::string USRP_UHD_i::getTunerType(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " allocation_id=" << allocation_id);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].tuner_type;
 }
 bool USRP_UHD_i::getTunerDeviceControl(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " allocation_id=" << allocation_id);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     if (this->getControlAllocationId(idx) == allocation_id)
         return true;
     return false;
@@ -1549,20 +1549,20 @@ bool USRP_UHD_i::getTunerDeviceControl(const std::string& allocation_id) {
 std::string USRP_UHD_i::getTunerGroupId(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " allocation_id=" << allocation_id);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].group_id;
 }
 std::string USRP_UHD_i::getTunerRfFlowId(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " allocation_id=" << allocation_id);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].rf_flow_id;
 }
 void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, double freq) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " allocation_id=" << allocation_id << " freq=" << freq);
 
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     if(allocation_id != getControlAllocationId(idx)){
         LOG_WARN(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: ID (" << allocation_id << ") DOES NOT HAVE AUTHORIZATION TO MODIFY TUNER!" );
         throw FRONTEND::FrontendException((std::string(__PRETTY_FUNCTION__)+" - ID "+allocation_id+" does not have authorization to modify the tuner").c_str());
@@ -1632,14 +1632,14 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
 double USRP_UHD_i::getTunerCenterFrequency(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].center_frequency;
 }
 void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
 
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     if(allocation_id != getControlAllocationId(idx)){
         LOG_WARN(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: ID (" << allocation_id << ") DOES NOT HAVE AUTHORIZATION TO MODIFY TUNER!" );
         throw FRONTEND::FrontendException((std::string(__PRETTY_FUNCTION__)+" - ID "+allocation_id+" does not have authorization to modify the tuner").c_str());
@@ -1703,7 +1703,7 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
 double USRP_UHD_i::getTunerBandwidth(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].bandwidth;
 }
 void USRP_UHD_i::setTunerAgcEnable(const std::string& allocation_id, bool enable){
@@ -1722,7 +1722,7 @@ void USRP_UHD_i::setTunerGain(const std::string& allocation_id, float gain){
 float USRP_UHD_i::getTunerGain(const std::string& allocation_id){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].gain;
 }
 void USRP_UHD_i::setTunerReferenceSource(const std::string& allocation_id, long source){
@@ -1733,14 +1733,14 @@ void USRP_UHD_i::setTunerReferenceSource(const std::string& allocation_id, long 
 long USRP_UHD_i::getTunerReferenceSource(const std::string& allocation_id){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].reference_source;
 }
 void USRP_UHD_i::setTunerEnable(const std::string& allocation_id, bool enable) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
 
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     if(allocation_id != getControlAllocationId(idx)){
         LOG_WARN(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: ID (" << allocation_id << ") DOES NOT HAVE AUTHORIZATION TO MODIFY TUNER!" );
         throw FRONTEND::FrontendException((std::string(__PRETTY_FUNCTION__)+" - ID "+allocation_id+" does not have authorization to modify the tuner").c_str());
@@ -1756,7 +1756,7 @@ void USRP_UHD_i::setTunerEnable(const std::string& allocation_id, bool enable) {
 bool USRP_UHD_i::getTunerEnable(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     return frontend_tuner_status[idx].enabled;
 }
 
@@ -1764,7 +1764,7 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
 
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     if(allocation_id != getControlAllocationId(idx)){
         LOG_WARN(USRP_UHD_i,__PRETTY_FUNCTION__ << " :: ID (" << allocation_id << ") DOES NOT HAVE AUTHORIZATION TO MODIFY TUNER!" );
         throw FRONTEND::FrontendException((std::string(__PRETTY_FUNCTION__)+" - ID "+allocation_id+" does not have authorization to modify the tuner").c_str());
@@ -1830,7 +1830,7 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
 double USRP_UHD_i::getTunerOutputSampleRate(const std::string& allocation_id){
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
     long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::BadParameterException("Invalid allocation id");
+    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " TUNER_SR=" << frontend_tuner_status[idx].sample_rate);
     return frontend_tuner_status[idx].sample_rate;
 }
