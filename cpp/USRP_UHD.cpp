@@ -178,16 +178,7 @@ USRP_UHD_i::~USRP_UHD_i()
 ************************************************************************************************/
 
 /** RECEIVE THREAD **/
-int USRP_UHD_i::serviceFunctionReceive()
-{
-    // yield to other threads if necessary
-    try{
-        boost::this_thread::interruption_point();
-    } catch(const boost::thread_interrupted& ){
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "INTERRUP REQUESTED, returning NOOP");
-        return NOOP;
-    }
-
+int USRP_UHD_i::serviceFunctionReceive(){
     if (usrp_device_ptr.get() == NULL)
         return NOOP;
 
@@ -258,15 +249,6 @@ int USRP_UHD_i::serviceFunctionReceive()
 
 /** TRANSMIT THREAD **/
 int USRP_UHD_i::serviceFunctionTransmit(){
-
-    // yield to other threads if necessary
-    try{
-        boost::this_thread::interruption_point();
-    } catch(const boost::thread_interrupted& ){
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "INTERRUP REQUESTED, returning NOOP");
-        return NOOP;
-    }
-
     bool ret = transmitHelper(dataShortTX_in);
     ret = ret || transmitHelper(dataFloatTX_in);
     if(ret)

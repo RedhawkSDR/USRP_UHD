@@ -41,6 +41,12 @@ public:
     void run() {
         int state = NORMAL;
         while (_thread_running and (state != FINISH)) {
+            // yield to other threads if necessary
+            try{
+                boost::this_thread::interruption_point();
+            } catch(const boost::thread_interrupted& ){
+            	usleep(_udelay);
+            }
             state = service_function();
             if (state == NOOP) usleep(_udelay);
         }
