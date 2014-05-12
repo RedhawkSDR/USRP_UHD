@@ -45,7 +45,7 @@ public:
             try{
                 boost::this_thread::interruption_point();
             } catch(const boost::thread_interrupted& ){
-            	usleep(_udelay);
+                usleep(_udelay);
             }
             state = service_function();
             if (state == NOOP) usleep(_udelay);
