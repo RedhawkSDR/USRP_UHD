@@ -467,11 +467,15 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             // account for RFInfo_pkt that specifies RF and IF frequencies
             // since request is always in RF, and USRP may be operating in IF
             bool complex = true; // USRP operates using complex data
-            if( !frontend::validateRequestVsDevice(request, rx_rfinfo_pkt, complex,
-                    device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
-                    device_channels[tuner_id].bandwidth_max, device_channels[tuner_id].rate_max) ){
-                LOG_INFO(USRP_UHD_i,"INVALID REQUEST -- falls outside of analog input or device capabilities");
-                throw FRONTEND::BadParameterException("INVALID REQUEST -- falls outside of analog input or device capabilities");
+            try {
+                if( !frontend::validateRequestVsDevice(request, rx_rfinfo_pkt, complex,
+                        device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
+                        device_channels[tuner_id].bandwidth_max, device_channels[tuner_id].rate_max) ){
+                    throw FRONTEND::BadParameterException("INVALID REQUEST -- falls outside of analog input or device capabilities");
+                }
+            } catch(FRONTEND::BadParameterException& e){
+                LOG_INFO(USRP_UHD_i,"BadParameterException - " << e.msg);
+                throw;
             }
 
             // calculate if_offset according to rx rfinfo packet
@@ -527,11 +531,15 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             // account for RFInfo_pkt that specifies RF and IF frequencies
             // since request is always in RF, and USRP may be operating in IF
             bool complex = true; // USRP operates using complex data
-            if( !frontend::validateRequestVsDevice(request, tx_rfinfo_pkt, complex,
-                    device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
-                    device_channels[tuner_id].bandwidth_max, device_channels[tuner_id].rate_max) ){
-                LOG_INFO(USRP_UHD_i,"INVALID REQUEST -- falls outside of analog output or device capabilities");
-                throw FRONTEND::BadParameterException("INVALID REQUEST -- falls outside of analog output or device capabilities");
+            try{
+                if( !frontend::validateRequestVsDevice(request, tx_rfinfo_pkt, complex,
+                        device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
+                        device_channels[tuner_id].bandwidth_max, device_channels[tuner_id].rate_max) ){
+                    throw FRONTEND::BadParameterException("INVALID REQUEST -- falls outside of analog output or device capabilities");
+                }
+            } catch(FRONTEND::BadParameterException& e){
+                LOG_INFO(USRP_UHD_i,"BadParameterException - " << e.msg);
+                throw;
             }
 
             // adjust requested center frequency according to tx rfinfo packet
