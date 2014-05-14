@@ -507,6 +507,27 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     interrupt(tuner_id);
     exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
 
+    // get stream id (creates one if not already created for this tuner)
+    std::string stream_id = getStreamId(tuner_id);
+    BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
+    sri.mode = 1; // complex
+    updateSriTimes(&sri, usrp_tuners[tuner_id].time_up.twsec, usrp_tuners[tuner_id].time_down.twsec, frontend::J1970);
+    dataShort_out->pushSRI(sri);
+    usrp_tuners[tuner_id].update_sri = false;
+
+    usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_size);
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "  pushing EOS with remaining samples."
+                                         << "  buffer_size=" << usrp_tuners[tuner_id].buffer_size
+                                         << "  buffer_capacity=" << usrp_tuners[tuner_id].buffer_capacity
+                                         << "  output_buffer.size()=" << usrp_tuners[tuner_id].output_buffer.size() );
+    dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, true, stream_id);
+    usrp_tuners[tuner_id].buffer_size = 0;
+    usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_capacity);
+
+    bulkio::sri::zeroTime(usrp_tuners[tuner_id].output_buffer_time);
+    bulkio::sri::zeroTime(usrp_tuners[tuner_id].time_up);
+    bulkio::sri::zeroTime(usrp_tuners[tuner_id].time_down);
+
     usrp_tuners[tuner_id].reset();
     fts.center_frequency = 0.0;
     fts.sample_rate = 0.0;
@@ -1288,29 +1309,19 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
         usrp_device_ptr->issue_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS,frontend_tuner_status[tuner_id].tuner_number);
 
 
-        if(prev_enabled){
+        // TODO - change logic such that this can be done in service thread
+        if(prev_enabled && usrp_tuners[tuner_id].buffer_size > 0){
             // get stream id (creates one if not already created for this tuner)
             std::string stream_id = getStreamId(tuner_id);
-            BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
-            sri.mode = 1; // complex
-            // TODO - does updateSriTimes need to be called each time SRI is pushed?
-            updateSriTimes(&sri, usrp_tuners[tuner_id].time_up.twsec, usrp_tuners[tuner_id].time_down.twsec, frontend::J1970);
-            dataShort_out->pushSRI(sri);
-            usrp_tuners[tuner_id].update_sri = false;
-
             usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_size);
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "  pushing EOS with remaining samples."
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "  pushing remaining samples after disable."
                                                  << "  buffer_size=" << usrp_tuners[tuner_id].buffer_size
                                                  << "  buffer_capacity=" << usrp_tuners[tuner_id].buffer_capacity
                                                  << "  output_buffer.size()=" << usrp_tuners[tuner_id].output_buffer.size() );
-            dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, true, stream_id);
+            dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
             usrp_tuners[tuner_id].buffer_size = 0;
             usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_capacity);
         }
-
-        bulkio::sri::zeroTime(usrp_tuners[tuner_id].output_buffer_time);
-        bulkio::sri::zeroTime(usrp_tuners[tuner_id].time_up);
-        bulkio::sri::zeroTime(usrp_tuners[tuner_id].time_down);
     }
     return true;
 }
