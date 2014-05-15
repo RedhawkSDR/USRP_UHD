@@ -359,14 +359,6 @@ void USRP_UHD_i::construct()
     tx_rfinfo_pkt.rf_bandwidth = 100e9; // 100 GHz, makes range 0 Hz to 100 GHz
     tx_rfinfo_pkt.if_center_freq = 0; // 0 Hz, no up/down converter
 
-    // TODO - DEBUG
-    //rx_rfinfo_pkt.rf_center_freq = 1.11e9;
-    //rx_rfinfo_pkt.rf_bandwidth = 2.22e9;
-    //rx_rfinfo_pkt.if_center_freq = 1.11e9;
-    //tx_rfinfo_pkt.rf_center_freq = 50e9;
-    //tx_rfinfo_pkt.rf_bandwidth = 100e9;
-    //tx_rfinfo_pkt.if_center_freq = 0;
-
     //USRP_UHD_base::construct();
     /***********************************************************************************
      this function is invoked in the constructor
@@ -434,39 +426,13 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
     double opt_bw = request.bandwidth;
 
     if (fts.tuner_type == "RX_DIGITIZER") {
-        LOG_DEBUG(USRP_UHD_i,"requested freq: "<<request.center_frequency);
-        LOG_DEBUG(USRP_UHD_i,"minimum freq:   "<<device_channels[tuner_id].freq_min);
-        LOG_DEBUG(USRP_UHD_i,"maximum freq:   "<<device_channels[tuner_id].freq_max);
-        LOG_DEBUG(USRP_UHD_i,"req - min:                   "<<(request.center_frequency-device_channels[tuner_id].freq_min));
-        LOG_DEBUG(USRP_UHD_i,"(req-min)*pow(10,1):         "<<((request.center_frequency-device_channels[tuner_id].freq_min)*pow(10,1)));
-        LOG_DEBUG(USRP_UHD_i,"(req-min)*10:                "<<((request.center_frequency-device_channels[tuner_id].freq_min)*10));
-        LOG_DEBUG(USRP_UHD_i,"round((req-min)*pow(10,1)):  "<<(round((request.center_frequency-device_channels[tuner_id].freq_min)*pow(10,1))));
-        LOG_DEBUG(USRP_UHD_i,"compareHz(req,min):          "<<(frontend::compareHz(request.center_frequency,device_channels[tuner_id].freq_min)));
-        LOG_DEBUG(USRP_UHD_i,"compareHz(req,min) < 0:      "<<(bool(frontend::compareHz(request.center_frequency,device_channels[tuner_id].freq_min)<0)));
-        LOG_DEBUG(USRP_UHD_i,"req - max:                   "<<(request.center_frequency-device_channels[tuner_id].freq_max));
-        LOG_DEBUG(USRP_UHD_i,"(req-max)*pow(10,1):         "<<((request.center_frequency-device_channels[tuner_id].freq_max)*pow(10,1)));
-        LOG_DEBUG(USRP_UHD_i,"(req-max)*10:                "<<((request.center_frequency-device_channels[tuner_id].freq_max)*10));
-        LOG_DEBUG(USRP_UHD_i,"round((req-max)*pow(10,1)):  "<<(round((request.center_frequency-device_channels[tuner_id].freq_max)*pow(10,1))));
-        LOG_DEBUG(USRP_UHD_i,"compareHz(req,max):          "<<(frontend::compareHz(request.center_frequency,device_channels[tuner_id].freq_max)));
-        LOG_DEBUG(USRP_UHD_i,"compareHz(req,max) > 0:      "<<(bool(frontend::compareHz(request.center_frequency,device_channels[tuner_id].freq_max)>0)));
 
         { // scope for prop_lock
             exclusive_lock lock(prop_lock);
 
             // check request against USRP specs and analog input
-
-            LOG_DEBUG(USRP_UHD_i,"rx_rfinfo_pkt.rf_center_freq = "<< rx_rfinfo_pkt.rf_center_freq);
-            LOG_DEBUG(USRP_UHD_i,"rx_rfinfo_pkt.rf_bandwidth = "<< rx_rfinfo_pkt.rf_bandwidth);
-            LOG_DEBUG(USRP_UHD_i,"rx_rfinfo_pkt.if_center_freq = "<< rx_rfinfo_pkt.if_center_freq);
-            LOG_DEBUG(USRP_UHD_i,"request.center_frequency = "<< request.center_frequency);
-            LOG_DEBUG(USRP_UHD_i,"request.bandwidth = "<< request.bandwidth);
-            LOG_DEBUG(USRP_UHD_i,"request.sample_rate = "<< request.sample_rate);
-            LOG_DEBUG(USRP_UHD_i,"device_channels[tuner_id].freq_min = "<< device_channels[tuner_id].freq_min);
-            LOG_DEBUG(USRP_UHD_i,"device_channels[tuner_id].freq_max = "<< device_channels[tuner_id].freq_max);
-
-            // account for RFInfo_pkt that specifies RF and IF frequencies
-            // since request is always in RF, and USRP may be operating in IF
             bool complex = true; // USRP operates using complex data
+            // calculate actual frequency range = (center frequency range) +/- (sample rate/2)
             try {
                 if( !frontend::validateRequestVsDevice(request, rx_rfinfo_pkt, complex,
                         device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
@@ -474,7 +440,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
                     throw FRONTEND::BadParameterException("INVALID REQUEST -- falls outside of analog input or device capabilities");
                 }
             } catch(FRONTEND::BadParameterException& e){
-                LOG_INFO(USRP_UHD_i,"BadParameterException - " << e.msg);
+                LOG_INFO(USRP_UHD_i,"deviceSetTuning|BadParameterException - " << e.msg);
                 throw;
             }
 
@@ -489,6 +455,10 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
 
         interrupt(tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+
+        // account for RFInfo_pkt that specifies RF and IF frequencies
+        // since request is always in RF, and USRP may be operating in IF
+        // adjust requested center frequency according to rx rfinfo packet
 
         // configure hw
         usrp_device_ptr->set_rx_freq(request.center_frequency-if_offset, fts.tuner_number);
@@ -518,19 +488,8 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             exclusive_lock lock(prop_lock);
 
             // check request against USRP specs and analog input
-
-            LOG_DEBUG(USRP_UHD_i,"tx_rfinfo_pkt.rf_center_freq = "<< tx_rfinfo_pkt.rf_center_freq);
-            LOG_DEBUG(USRP_UHD_i,"tx_rfinfo_pkt.rf_bandwidth = "<< tx_rfinfo_pkt.rf_bandwidth);
-            LOG_DEBUG(USRP_UHD_i,"tx_rfinfo_pkt.if_center_freq = "<< tx_rfinfo_pkt.if_center_freq);
-            LOG_DEBUG(USRP_UHD_i,"request.center_frequency = "<< request.center_frequency);
-            LOG_DEBUG(USRP_UHD_i,"request.bandwidth = "<< request.bandwidth);
-            LOG_DEBUG(USRP_UHD_i,"request.sample_rate = "<< request.sample_rate);
-            LOG_DEBUG(USRP_UHD_i,"device_channels[tuner_id].freq_min = "<< device_channels[tuner_id].freq_min);
-            LOG_DEBUG(USRP_UHD_i,"device_channels[tuner_id].freq_max = "<< device_channels[tuner_id].freq_max);
-
-            // account for RFInfo_pkt that specifies RF and IF frequencies
-            // since request is always in RF, and USRP may be operating in IF
             bool complex = true; // USRP operates using complex data
+            // calculate actual frequency range = (center frequency range) +/- (sample rate/2)
             try{
                 if( !frontend::validateRequestVsDevice(request, tx_rfinfo_pkt, complex,
                         device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
@@ -542,7 +501,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
                 throw;
             }
 
-            // adjust requested center frequency according to tx rfinfo packet
+            // calculate if_offset according to tx rfinfo packet
             if(frontend::compareHz(tx_rfinfo_pkt.if_center_freq,0) > 0){
                 if_offset = tx_rfinfo_pkt.rf_center_freq-tx_rfinfo_pkt.if_center_freq;
             }
@@ -553,6 +512,10 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
 
         interrupt(tuner_id);
         exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+
+        // account for RFInfo_pkt that specifies RF and IF frequencies
+        // since request is always in RF, and USRP may be operating in IF
+        // adjust requested center frequency according to tx rfinfo packet
 
         // configure hw
         usrp_device_ptr->set_tx_freq(request.center_frequency+if_offset, fts.tuner_number);
@@ -1102,7 +1065,7 @@ void USRP_UHD_i::updateDeviceInfo() {
         availChan.clock_max = rates.front();
 
         availChan.freq_current = usrp_device_ptr->get_rx_freq(chan);
-        usrp_ranges[chan].frequency = usrp_device_ptr->get_rx_freq_range(chan);
+        usrp_ranges[chan].frequency = usrp_device_ptr->get_rx_freq_range(chan); // this is the CF range, actual range is +/- (sr/2)
         availChan.freq_min = usrp_ranges[chan].frequency.start();
         availChan.freq_max = usrp_ranges[chan].frequency.stop();
 
@@ -1137,7 +1100,7 @@ void USRP_UHD_i::updateDeviceInfo() {
         availChan.clock_max = rates.front();
 
         availChan.freq_current = usrp_device_ptr->get_tx_freq(chan);
-        usrp_ranges[num_rx_channels+chan].frequency = usrp_device_ptr->get_tx_freq_range(chan);
+        usrp_ranges[num_rx_channels+chan].frequency = usrp_device_ptr->get_tx_freq_range(chan); // this is the CF range, actual range is +/- (sr/2)
         availChan.freq_min = usrp_ranges[num_rx_channels+chan].frequency.start();
         availChan.freq_max = usrp_ranges[num_rx_channels+chan].frequency.stop();
 
@@ -1391,8 +1354,6 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
     if(frontend_tuner_status[tuner_id].tuner_type != "TX"){
         usrp_device_ptr->issue_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS,frontend_tuner_status[tuner_id].tuner_number);
 
-
-        // TODO - change logic such that this can be done in service thread
         if(prev_enabled && usrp_tuners[tuner_id].buffer_size > 0){
             // get stream id (creates one if not already created for this tuner)
             std::string stream_id = getStreamId(tuner_id);
