@@ -32,8 +32,8 @@ BuildRequires: e2fsprogs-devel
 %endif
 
 # Interface requirements
-BuildRequires:  frontendInterfaces bulkioInterfaces
-Requires:       frontendInterfaces bulkioInterfaces
+BuildRequires:  frontendInterfaces >= 2.2 bulkioInterfaces >= 1.10
+Requires:       frontendInterfaces >= 2.2 bulkioInterfaces >= 1.10
 
 BuildRequires: uhd-devel
 
