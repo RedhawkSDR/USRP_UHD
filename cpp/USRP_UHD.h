@@ -102,8 +102,9 @@ struct usrpTunerStruct {
         // Multiply by some number < 1 to leave some margin for the CORBA header
         // fyi: the bulkio pushPacket call does this same calculation as of 1.10,
         //      so we'll only require a single pushPacket call per buffer
+    	// Also, since data is complex, ensure number of samples is even
         const size_t max_payload_size    = (size_t) (bulkio::Const::MaxTransferBytes() * .9);
-        const size_t max_samples_per_push = max_payload_size/sizeof(output_buffer[0]);
+        const size_t max_samples_per_push = size_t((max_payload_size/sizeof(output_buffer[0]))/2)*2;
 
         buffer_capacity = max_samples_per_push;
         output_buffer.resize( buffer_capacity );
