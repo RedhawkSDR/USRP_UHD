@@ -447,7 +447,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             }
 
             // calculate if_offset according to rx rfinfo packet
-            if(frontend::compareHz(rx_rfinfo_pkt.if_center_freq,0) > 0){
+            if(frontend::floatingPointCompare(rx_rfinfo_pkt.if_center_freq,0) > 0){
                 if_offset = rx_rfinfo_pkt.rf_center_freq-rx_rfinfo_pkt.if_center_freq;
             }
 
@@ -506,7 +506,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             }
 
             // calculate if_offset according to tx rfinfo packet
-            if(frontend::compareHz(tx_rfinfo_pkt.if_center_freq,0) > 0){
+            if(frontend::floatingPointCompare(tx_rfinfo_pkt.if_center_freq,0) > 0){
                 if_offset = tx_rfinfo_pkt.rf_center_freq-tx_rfinfo_pkt.if_center_freq;
             }
 
@@ -794,20 +794,20 @@ std::string USRP_UHD_i::getStreamId(size_t tuner_id) {
 double USRP_UHD_i::optimizeRate(const double& req_rate, const size_t tuner_id){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " req_rate=" << req_rate);
 
-    if(frontend::compareHz(req_rate,0) <= 0){
+    if(frontend::floatingPointCompare(req_rate,0) <= 0){
         return usrp_ranges[tuner_id].sample_rate.clip(device_channels[tuner_id].rate_min);
     }
     size_t dec = round(device_channels[tuner_id].clock_max/req_rate);
     double opt_rate = device_channels[tuner_id].clock_max / double(dec);
     double usrp_rate = usrp_ranges[tuner_id].sample_rate.clip(opt_rate);
-    if(frontend::compareHz(usrp_rate,req_rate) >=0 ){
+    if(frontend::floatingPointCompare(usrp_rate,req_rate) >=0 ){
         return usrp_rate;
     }
     size_t min_dec = round(device_channels[tuner_id].clock_max/device_channels[tuner_id].rate_max);
     for(dec--; dec >= min_dec; dec--){
         opt_rate = device_channels[tuner_id].clock_max / double(dec);
         usrp_rate = usrp_ranges[tuner_id].sample_rate.clip(opt_rate);
-        if(frontend::compareHz(usrp_rate,req_rate) >=0 ){
+        if(frontend::floatingPointCompare(usrp_rate,req_rate) >=0 ){
             return usrp_rate;
         }
     }
@@ -820,11 +820,11 @@ double USRP_UHD_i::optimizeRate(const double& req_rate, const size_t tuner_id){
 double USRP_UHD_i::optimizeBandwidth(const double& req_bw, const size_t tuner_id){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " req_bw=" << req_bw);
 
-    if(frontend::compareHz(req_bw,0) <= 0){
+    if(frontend::floatingPointCompare(req_bw,0) <= 0){
         return usrp_ranges[tuner_id].bandwidth.clip(device_channels[tuner_id].bandwidth_min);
     }
     double usrp_bw = usrp_ranges[tuner_id].bandwidth.clip(req_bw);
-    if(frontend::compareHz(usrp_bw,req_bw) >=0 ){
+    if(frontend::floatingPointCompare(usrp_bw,req_bw) >=0 ){
         return usrp_bw;
     }
 
@@ -1001,7 +1001,7 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
             frontend_tuner_status[tuner_id].sample_rate_tolerance = 0.0;
             frontend_tuner_status[tuner_id].bandwidth_tolerance = 0.0;
 
-            if( frontend::compareHz(device_channels[tuner_id].freq_min,device_channels[tuner_id].freq_max) < 0 )
+            if( frontend::floatingPointCompare(device_channels[tuner_id].freq_min,device_channels[tuner_id].freq_max) < 0 )
                 sprintf(tmp,"%.2f-%.2f",device_channels[tuner_id].freq_min,device_channels[tuner_id].freq_max);
             else
                 sprintf(tmp,"%.2f",device_channels[tuner_id].freq_min);
@@ -1011,14 +1011,14 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
             else
                 sprintf(tmp,"%.2f",device_channels[tuner_id].gain_min);
             frontend_tuner_status[tuner_id].available_gain = std::string(tmp);
-            if( frontend::compareHz(device_channels[tuner_id].rate_min,device_channels[tuner_id].rate_max) < 0 )
+            if( frontend::floatingPointCompare(device_channels[tuner_id].rate_min,device_channels[tuner_id].rate_max) < 0 )
                 sprintf(tmp,"%.2f-%.2f",device_channels[tuner_id].rate_min,device_channels[tuner_id].rate_max);
             else
                 sprintf(tmp,"%.2f",device_channels[tuner_id].rate_min);
             frontend_tuner_status[tuner_id].available_sample_rate = std::string(tmp);
             //sprintf(tmp,"%.2f",40e6); // fixed bandwidth of 40 MHz
             //frontend_tuner_status[tuner_id].available_bandwidth = std::string(tmp);
-            if( frontend::compareHz(device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].bandwidth_max) < 0 )
+            if( frontend::floatingPointCompare(device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].bandwidth_max) < 0 )
                 sprintf(tmp,"%.2f-%.2f",device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].bandwidth_max);
             else
                 sprintf(tmp,"%.2f",device_channels[tuner_id].bandwidth_min);
@@ -1690,8 +1690,8 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
         try {
             exclusive_lock lock(prop_lock);
 
-            if (frontend::compareHz(bw,0.0) < 0 ||
-                    frontend::compareHz(bw,device_channels[idx].bandwidth_max) > 0 ){
+            if (frontend::floatingPointCompare(bw,0.0) < 0 ||
+                    frontend::floatingPointCompare(bw,device_channels[idx].bandwidth_max) > 0 ){
                 std::ostringstream msg;
                 msg << __PRETTY_FUNCTION__ << ":: INVALID BANDWIDTH (" << bw <<")";
                 LOG_WARN(USRP_UHD_i,msg.str() );
@@ -1815,8 +1815,8 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
         try {
             exclusive_lock lock(prop_lock);
 
-            if (frontend::compareHz(sr,0.0) < 0 ||
-                    frontend::compareHz(sr,device_channels[idx].rate_max) > 0 ){
+            if (frontend::floatingPointCompare(sr,0.0) < 0 ||
+                    frontend::floatingPointCompare(sr,device_channels[idx].rate_max) > 0 ){
                 std::ostringstream msg;
                 msg << __PRETTY_FUNCTION__ << ":: INVALID SAMPLE RATE (" << sr <<")";
                 LOG_WARN(USRP_UHD_i,msg.str() );
