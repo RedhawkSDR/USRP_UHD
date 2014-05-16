@@ -10,6 +10,7 @@
   </simple>
   <simple id="DCE:0f99b2e4-9903-4631-9846-ff349d18ecfb" mode="readonly" name="device_model" type="string">
     <description> This specifies the specific device</description>
+    <value>USRP</value>
     <kind kindtype="configure"/>
     <kind kindtype="allocation"/>
     <action type="eq"/>
