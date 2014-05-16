@@ -81,13 +81,13 @@ void USRP_UHD_base::construct()
 *******************************************************************************************/
 void USRP_UHD_base::start() throw (CORBA::SystemException, CF::Resource::StartError)
 {
-    Resource_impl::start();
+    frontend::FrontendTunerDevice<frontend_tuner_status_struct_struct>::start();
     ThreadedComponent::startThread();
 }
 
 void USRP_UHD_base::stop() throw (CORBA::SystemException, CF::Resource::StopError)
 {
-    Resource_impl::stop();
+    frontend::FrontendTunerDevice<frontend_tuner_status_struct_struct>::stop();
     if (!ThreadedComponent::stopThread()) {
         throw CF::Resource::StopError(CF::CF_NOTSET, "Processing thread did not die");
     }
@@ -113,6 +113,7 @@ void USRP_UHD_base::connectionTableChanged(const std::vector<connection_descript
 void USRP_UHD_base::loadProperties()
 {
     device_kind = "FRONTEND::TUNER";
+    device_model = "USRP";
     addProperty(update_available_devices,
                 false,
                 "update_available_devices",
