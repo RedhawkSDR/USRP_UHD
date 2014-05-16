@@ -574,10 +574,6 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     usrp_tuners[tuner_id].buffer_size = 0;
     usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_capacity);
 
-    bulkio::sri::zeroTime(usrp_tuners[tuner_id].output_buffer_time);
-    bulkio::sri::zeroTime(usrp_tuners[tuner_id].time_up);
-    bulkio::sri::zeroTime(usrp_tuners[tuner_id].time_down);
-
     usrp_tuners[tuner_id].reset();
     fts.center_frequency = 0.0;
     fts.sample_rate = 0.0;
