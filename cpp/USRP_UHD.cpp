@@ -498,9 +498,9 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             }
 
             // calculate if_offset according to tx rfinfo packet
-            if(frontend::floatingPointCompare(tx_rfinfo_pkt.if_center_freq,0) > 0){
-                if_offset = tx_rfinfo_pkt.rf_center_freq-tx_rfinfo_pkt.if_center_freq;
-            }
+            //if(frontend::floatingPointCompare(tx_rfinfo_pkt.if_center_freq,0) > 0){
+            //    if_offset = tx_rfinfo_pkt.rf_center_freq-tx_rfinfo_pkt.if_center_freq;
+            //}
 
             opt_sr = optimizeRate(request.sample_rate, tuner_id);
             opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
