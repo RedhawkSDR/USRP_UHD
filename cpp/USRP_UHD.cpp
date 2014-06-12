@@ -1451,9 +1451,6 @@ std::string USRP_UHD_i::get_rf_flow_id(const std::string& port_name){
     if( port_name == "RFInfo_in"){
         exclusive_lock lock(prop_lock);
         return rx_rfinfo_pkt.rf_flow_id;
-    } else if( port_name == "RFInfoTX_out"){
-        exclusive_lock lock(prop_lock);
-        return tx_rfinfo_pkt.rf_flow_id;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
         return "";
@@ -1466,10 +1463,6 @@ void USRP_UHD_i::set_rf_flow_id(const std::string& port_name, const std::string&
         updateRxRfFlowId(id);
         exclusive_lock lock(prop_lock);
         rx_rfinfo_pkt.rf_flow_id = id;
-    } else if( port_name == "RFInfoTX_out"){
-        updateTxRfFlowId(id);
-        exclusive_lock lock(prop_lock);
-        tx_rfinfo_pkt.rf_flow_id = id;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
     }
@@ -1482,9 +1475,6 @@ frontend::RFInfoPkt USRP_UHD_i::get_rfinfo_pkt(const std::string& port_name){
     if( port_name == "RFInfo_in"){
         exclusive_lock lock(prop_lock);
         pkt = &rx_rfinfo_pkt;
-    } else if( port_name == "RFInfoTX_out"){
-        exclusive_lock lock(prop_lock);
-        pkt = &tx_rfinfo_pkt;
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
         return tmp;
@@ -1536,29 +1526,6 @@ void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RF
         rx_rfinfo_pkt.sensor.feed.freq_range.values.resize(pkt.sensor.feed.freq_range.values.size());
         for (unsigned int i=0; i<pkt.sensor.feed.freq_range.values.size(); i++) {
             rx_rfinfo_pkt.sensor.feed.freq_range.values[i] = pkt.sensor.feed.freq_range.values[i];
-        }
-    } else if( port_name == "RFInfoTX_out"){
-        updateTxRfFlowId(pkt.rf_flow_id);
-        exclusive_lock lock(prop_lock);
-        tx_rfinfo_pkt.rf_flow_id = pkt.rf_flow_id;
-        tx_rfinfo_pkt.rf_center_freq = pkt.rf_center_freq;
-        tx_rfinfo_pkt.rf_bandwidth = pkt.rf_bandwidth;
-        tx_rfinfo_pkt.if_center_freq = pkt.if_center_freq;
-        tx_rfinfo_pkt.spectrum_inverted = pkt.spectrum_inverted;
-        tx_rfinfo_pkt.sensor.collector = pkt.sensor.collector;
-        tx_rfinfo_pkt.sensor.mission = pkt.sensor.mission;
-        tx_rfinfo_pkt.sensor.rx = pkt.sensor.rx;
-        tx_rfinfo_pkt.sensor.antenna.description = pkt.sensor.antenna.description;
-        tx_rfinfo_pkt.sensor.antenna.name = pkt.sensor.antenna.name;
-        tx_rfinfo_pkt.sensor.antenna.size = pkt.sensor.antenna.size;
-        tx_rfinfo_pkt.sensor.antenna.type = pkt.sensor.antenna.type;
-        tx_rfinfo_pkt.sensor.feed.name = pkt.sensor.feed.name;
-        tx_rfinfo_pkt.sensor.feed.polarization = pkt.sensor.feed.polarization;
-        tx_rfinfo_pkt.sensor.feed.freq_range.max_val = pkt.sensor.feed.freq_range.max_val;
-        tx_rfinfo_pkt.sensor.feed.freq_range.min_val = pkt.sensor.feed.freq_range.min_val;
-        tx_rfinfo_pkt.sensor.feed.freq_range.values.resize(pkt.sensor.feed.freq_range.values.size());
-        for (unsigned int i=0; i<pkt.sensor.feed.freq_range.values.size(); i++) {
-            tx_rfinfo_pkt.sensor.feed.freq_range.values[i] = pkt.sensor.feed.freq_range.values[i];
         }
     } else {
         LOG_WARN(USRP_UHD_i, std::string(__PRETTY_FUNCTION__) + ":: UNKNOWN PORT NAME: " + port_name);
