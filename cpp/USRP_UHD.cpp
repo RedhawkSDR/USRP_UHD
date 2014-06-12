@@ -515,7 +515,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
 
         // configure hw
         usrp_device_ptr->set_tx_freq(request.center_frequency+if_offset, fts.tuner_number);
-        usrp_device_ptr->set_tx_bandwidth(request.bandwidth, fts.tuner_number);
+        usrp_device_ptr->set_tx_bandwidth(opt_bw, fts.tuner_number);
         usrp_device_ptr->set_tx_rate(opt_sr, fts.tuner_number);
 
         // update frontend_tuner_status with actual hw values
@@ -1247,13 +1247,13 @@ long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
 /* acquire tuner_lock prior to calling this function *
  */
 template <class PACKET_TYPE> bool USRP_UHD_i::usrpTransmit(size_t tuner_id, PACKET_TYPE *packet){
-
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
     if(usrp_tuners[tuner_id].update_sri){
         tx_rfinfo_pkt.rf_center_freq = frontend_tuner_status[tuner_id].center_frequency;
         tx_rfinfo_pkt.if_center_freq = frontend_tuner_status[tuner_id].center_frequency;
         tx_rfinfo_pkt.rf_bandwidth = frontend_tuner_status[tuner_id].bandwidth;
+        LOG_DEBUG(USRP_UHD_i,"usrpTransmit|tuner_id=" << tuner_id << "Sending updated tx_rfinfo_pkt: rf_center_freq="<<tx_rfinfo_pkt.rf_center_freq<<" if_center_freq="<<tx_rfinfo_pkt.if_center_freq<<" bandwidth=tx_rfinfo_pkt.rf_bandwidth");
 
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " pushing tx_rfinfo_pkt w/ freq=" << tx_rfinfo_pkt.rf_center_freq << " and bw=" << tx_rfinfo_pkt.rf_bandwidth);
         RFInfoTX_out->rfinfo_pkt(tx_rfinfo_pkt);
         usrp_tuners[tuner_id].update_sri = false;
     }
@@ -1268,7 +1268,7 @@ template <class PACKET_TYPE> bool USRP_UHD_i::usrpTransmit(size_t tuner_id, PACK
     if (usrp_tx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL ||
             sizeof(PACKET_ELEMENT_TYPE) != usrp_tx_streamer_typesize[frontend_tuner_status[tuner_id].tuner_number]){
         usrpCreateTxStream<PACKET_ELEMENT_TYPE>(tuner_id);
-        LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got tx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
+        LOG_DEBUG(USRP_UHD_i,"usrpTransmit|tuner_id=" << tuner_id << " got tx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
     }
 
     // Send in size/2 because it is complex
@@ -1293,7 +1293,7 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
         tx_rfinfo_pkt.rf_bandwidth = frontend_tuner_status[tuner_id].bandwidth;
 
         if(!prev_enabled){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " pushing tx_rfinfo_pkt w/ freq=" << tx_rfinfo_pkt.rf_center_freq << " and bw=" << tx_rfinfo_pkt.rf_bandwidth);
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << "Sending updated tx_rfinfo_pkt: rf_center_freq="<<tx_rfinfo_pkt.rf_center_freq<<" if_center_freq="<<tx_rfinfo_pkt.if_center_freq<<" bandwidth=tx_rfinfo_pkt.rf_bandwidth");
             RFInfoTX_out->rfinfo_pkt(tx_rfinfo_pkt);
             usrp_tuners[tuner_id].update_sri = false;
         }
@@ -1365,6 +1365,7 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
 /* acquire tuner_lock prior to calling this function *
  */
 bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id);
     //cleanup possible old one
     usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].reset();
 
@@ -1377,6 +1378,7 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
      *  - sc8 - complex<int8_t>
      */
     std::string cpu_format = "sc16"; // complex dataShort
+    LOG_DEBUG(USRP_UHD_i,"usrpCreateRxStream|using cpu_format" << cpu_format);
 
     /*!
      * The OTW format is a string that describes the format over-the-wire.
@@ -1387,6 +1389,7 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
     std::string wire_format = "sc16";
     if(device_rx_mode == "8bit")
         wire_format = "sc8"; // enable 8-bit mode with "sc8"
+    LOG_DEBUG(USRP_UHD_i,"usrpCreateRxStream|using wire_format" << wire_format);
 
     uhd::stream_args_t stream_args(cpu_format,wire_format);
     stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
@@ -1399,6 +1402,7 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
  */
 template <class PACKET_ELEMENT_TYPE>
 bool USRP_UHD_i::usrpCreateTxStream(size_t tuner_id){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id);
     //cleanup possible old one
     usrp_tx_streamers[frontend_tuner_status[tuner_id].tuner_number].reset();
 
@@ -1417,6 +1421,7 @@ bool USRP_UHD_i::usrpCreateTxStream(size_t tuner_id){
         cpu_format = "fc32"; // enable sending dataFloat with "fc32"
         usrp_tx_streamer_typesize[frontend_tuner_status[tuner_id].tuner_number] = sizeof(PACKET_ELEMENT_TYPE);
     }
+    LOG_DEBUG(USRP_UHD_i,"usrpCreateTxStream|using cpu_format" << cpu_format);
 
     /*!
      * The OTW format is a string that describes the format over-the-wire.
@@ -1427,6 +1432,7 @@ bool USRP_UHD_i::usrpCreateTxStream(size_t tuner_id){
     std::string wire_format = "sc16";
     if(device_tx_mode == "8bit")
         wire_format = "sc8"; // enable 8-bit mode with "sc8"
+    LOG_DEBUG(USRP_UHD_i,"usrpCreateTxStream|using wire_format" << wire_format);
 
     uhd::stream_args_t stream_args(cpu_format,wire_format);
     stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
