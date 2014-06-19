@@ -1105,10 +1105,6 @@ void USRP_UHD_i::updateDeviceInfo() {
             availChan.tuner_type = "UNKNOWN";
         availChan.antenna = usrp_device_ptr->get_rx_antenna(chan);
 
-        std::vector<double> rates = usrp_device_ptr->get_rx_dboard_iface(chan)->get_clock_rates(uhd::usrp::dboard_iface::UNIT_RX);
-        availChan.clock_min = rates.back();
-        availChan.clock_max = rates.front();
-
         availChan.freq_current = usrp_device_ptr->get_rx_freq(chan);
         usrp_ranges[chan].frequency = usrp_device_ptr->get_rx_freq_range(chan); // this is the CF range, actual range is +/- (sr/2)
         availChan.freq_min = usrp_ranges[chan].frequency.start();
@@ -1129,6 +1125,17 @@ void USRP_UHD_i::updateDeviceInfo() {
         availChan.gain_min = usrp_ranges[chan].gain.start();
         availChan.gain_max = usrp_ranges[chan].gain.stop();
 
+        try{
+            std::vector<double> rates = usrp_device_ptr->get_rx_dboard_iface(chan)->get_clock_rates(uhd::usrp::dboard_iface::UNIT_RX);
+            availChan.clock_min = rates.back();
+            availChan.clock_max = rates.front();
+            LOG_DEBUG(USRP_UHD_i,"updateDeviceInfo|rx"<<chan<<"|got clock rates ["<<rates.back()<<":"<<rates.front()<<"]");
+        } catch(...) {
+            LOG_WARN(USRP_UHD_i,"Unable to get clock rates for RX channel " << chan << ", setting to min=0 max=2*rate_max")
+            availChan.clock_min = 0;
+            availChan.clock_max = 2*availChan.rate_max;
+        }
+
         device_channels.push_back(availChan);
     }
     for (size_t chan = 0; chan < num_tx_channels; chan++) {
@@ -1139,10 +1146,6 @@ void USRP_UHD_i::updateDeviceInfo() {
         if(availChan.ch_name.find("unknown") != std::string::npos)
             availChan.tuner_type = "UNKNOWN";
         availChan.antenna = usrp_device_ptr->get_tx_antenna(chan);
-
-        std::vector<double> rates = usrp_device_ptr->get_tx_dboard_iface(chan)->get_clock_rates(uhd::usrp::dboard_iface::UNIT_TX);
-        availChan.clock_min = rates.back();
-        availChan.clock_max = rates.front();
 
         availChan.freq_current = usrp_device_ptr->get_tx_freq(chan);
         usrp_ranges[num_rx_channels+chan].frequency = usrp_device_ptr->get_tx_freq_range(chan); // this is the CF range, actual range is +/- (sr/2)
@@ -1163,6 +1166,17 @@ void USRP_UHD_i::updateDeviceInfo() {
         usrp_ranges[num_rx_channels+chan].gain = usrp_device_ptr->get_tx_gain_range(chan);
         availChan.gain_min = usrp_ranges[num_rx_channels+chan].gain.start();
         availChan.gain_max = usrp_ranges[num_rx_channels+chan].gain.stop();
+
+        try{
+            std::vector<double> rates = usrp_device_ptr->get_tx_dboard_iface(chan)->get_clock_rates(uhd::usrp::dboard_iface::UNIT_TX);
+            availChan.clock_min = rates.back();
+            availChan.clock_max = rates.front();
+            LOG_DEBUG(USRP_UHD_i,"updateDeviceInfo|tx"<<chan<<"|got clock rates ["<<rates.back()<<":"<<rates.front()<<"]");
+        } catch(...) {
+            LOG_WARN(USRP_UHD_i,"Unable to get clock rates for TX channel " << chan << ", setting to min=0 max=2*rate_max")
+            availChan.clock_min = 0;
+            availChan.clock_max = 2*availChan.rate_max;
+        }
 
         device_channels.push_back(availChan);
     }
@@ -1376,8 +1390,12 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
         }
 
         // check for lo_lock
-        for(size_t i=0; i<10 && !usrp_device_ptr->get_rx_sensor("lo_locked",frontend_tuner_status[tuner_id].tuner_number).to_bool(); i++){
-            sleep(0.1);
+        try{
+            for(size_t i=0; i<10 && !usrp_device_ptr->get_rx_sensor("lo_locked",frontend_tuner_status[tuner_id].tuner_number).to_bool(); i++){
+                sleep(0.1);
+            }
+        } catch(...){
+            sleep(1);
         }
 
         uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
