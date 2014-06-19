@@ -13,6 +13,76 @@ typedef bulkio::connection_descriptor_struct connection_descriptor_struct;
 
 #include <frontend/fe_tuner_struct_props.h>
 
+struct target_device_struct {
+    target_device_struct ()
+    {
+        type = "";
+        ip_address = "";
+        name = "";
+        serial = "";
+    };
+
+    static std::string getId() {
+        return std::string("target_device");
+    };
+
+    std::string type;
+    std::string ip_address;
+    std::string name;
+    std::string serial;
+};
+
+inline bool operator>>= (const CORBA::Any& a, target_device_struct& s) {
+    CF::Properties* temp;
+    if (!(a >>= temp)) return false;
+    CF::Properties& props = *temp;
+    for (unsigned int idx = 0; idx < props.length(); idx++) {
+        if (!strcmp("target::type", props[idx].id)) {
+            if (!(props[idx].value >>= s.type)) return false;
+        }
+        else if (!strcmp("target::ip_address", props[idx].id)) {
+            if (!(props[idx].value >>= s.ip_address)) return false;
+        }
+        else if (!strcmp("target::name", props[idx].id)) {
+            if (!(props[idx].value >>= s.name)) return false;
+        }
+        else if (!strcmp("target::serial", props[idx].id)) {
+            if (!(props[idx].value >>= s.serial)) return false;
+        }
+    }
+    return true;
+};
+
+inline void operator<<= (CORBA::Any& a, const target_device_struct& s) {
+    CF::Properties props;
+    props.length(4);
+    props[0].id = CORBA::string_dup("target::type");
+    props[0].value <<= s.type;
+    props[1].id = CORBA::string_dup("target::ip_address");
+    props[1].value <<= s.ip_address;
+    props[2].id = CORBA::string_dup("target::name");
+    props[2].value <<= s.name;
+    props[3].id = CORBA::string_dup("target::serial");
+    props[3].value <<= s.serial;
+    a <<= props;
+};
+
+inline bool operator== (const target_device_struct& s1, const target_device_struct& s2) {
+    if (s1.type!=s2.type)
+        return false;
+    if (s1.ip_address!=s2.ip_address)
+        return false;
+    if (s1.name!=s2.name)
+        return false;
+    if (s1.serial!=s2.serial)
+        return false;
+    return true;
+};
+
+inline bool operator!= (const target_device_struct& s1, const target_device_struct& s2) {
+    return !(s1==s2);
+};
+
 struct frontend_tuner_status_struct_struct : public frontend::default_frontend_tuner_status_struct_struct {
     frontend_tuner_status_struct_struct () : frontend::default_frontend_tuner_status_struct_struct()
     {

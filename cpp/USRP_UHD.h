@@ -230,7 +230,7 @@ class USRP_UHD_i : public USRP_UHD_base
 
         // configure callbacks
         void updateAvailableDevicesChanged(const bool* old_value, const bool* new_value);
-        void deviceIpAddressChanged(const std::string* old_value, const std::string* new_value) throw (CF::PropertySet::InvalidConfiguration);
+        void targetDeviceChanged(const target_device_struct* old_value, const target_device_struct* new_value);
         void deviceRxGainChanged(const float* old_value, const float* new_value);
         void deviceTxGainChanged(const float* old_value, const float* new_value);
         void deviceReferenceSourceChanged(const std::string* old_value, const std::string* new_value);
@@ -251,6 +251,7 @@ class USRP_UHD_i : public USRP_UHD_base
                                                        // each element protected by corresponding usrp_tuners[tuner_id].lock
 
         // usrp helper functions/etc.
+        void clearBookkeeping(); // clear bookkeeping when not associated with a H/W device
         std::string getStreamId(size_t tuner_id);
         double optimizeRate(const double& req_rate, const size_t tuner_id);
         double optimizeBandwidth(const double& req_bw, const size_t tuner_id);

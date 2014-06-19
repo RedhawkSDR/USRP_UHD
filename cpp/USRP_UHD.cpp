@@ -364,7 +364,7 @@ void USRP_UHD_i::construct()
      this function is invoked in the constructor
     ***********************************************************************************/
 
-    addPropertyChangeListener("device_ip_address", this, &USRP_UHD_i::deviceIpAddressChanged);
+    addPropertyChangeListener("target_device", this, &USRP_UHD_i::targetDeviceChanged);
     addPropertyChangeListener("device_rx_gain_global", this, &USRP_UHD_i::deviceRxGainChanged);
     addPropertyChangeListener("device_tx_gain_global", this, &USRP_UHD_i::deviceTxGainChanged);
     addPropertyChangeListener("device_group_id_global", this, &USRP_UHD_i::deviceGroupIdChanged);
@@ -708,15 +708,18 @@ void USRP_UHD_i::updateAvailableDevicesChanged(const bool* old_value, const bool
     update_available_devices = false;
 }
 
-void USRP_UHD_i::deviceIpAddressChanged(const std::string* old_value, const std::string* new_value) throw (CF::PropertySet::InvalidConfiguration) {
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_ip_address=" << device_ip_address);
+void USRP_UHD_i::targetDeviceChanged(const target_device_struct* old_value, const target_device_struct* new_value){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
+    LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|target_device.type=" << target_device.type);
+    LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|target_device.name=" << target_device.name);
+    LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|target_device.serial=" << target_device.serial);
+    LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|target_device.ip_address=" << target_device.ip_address);
 
     if(started()){
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device has been started, must stop before initialization");
+        LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|device has been started, must stop before initialization");
         stop();
     } else {
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device has not been started, continue with initialization");
+        LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|device has not been started, continue with initialization");
     }
 
     { // scope for prop_lock
@@ -732,10 +735,10 @@ void USRP_UHD_i::deviceIpAddressChanged(const std::string* old_value, const std:
     } // end scope for prop_lock
 
     if(!started()){
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device is not started, must start device after initialization");
+        LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|device is not started, must start device after initialization");
         start();
     } else {
-        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device was already started after initialization, not calling start again");
+        LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|device was already started after initialization, not calling start again");
     }
 
 }
@@ -764,6 +767,21 @@ void USRP_UHD_i::deviceGroupIdChanged(const std::string* old_value, const std::s
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "device_group_id_global=" << device_group_id_global);
 
     updateGroupId(*new_value);
+}
+
+// clear bookkeeping when not associated with a H/W device
+/* acquire prop_lock prior to calling this function */
+void USRP_UHD_i::clearBookkeeping(){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
+
+    setNumChannels(0,0);
+
+    // additional properties
+    device_channels.clear();
+    device_motherboards.clear();
+
+    // additional internal
+    usrp_ranges.clear();
 }
 
 /* acquire tuner's lock prior to calling this function */
@@ -928,10 +946,42 @@ void USRP_UHD_i::updateAvailableDevices(){
 void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
 
+    clearBookkeeping();
+
     try {
-        usrp_device_addr = uhd::device_addr_t();
-        usrp_device_addr["addr0"] = device_ip_address;
-        usrp_device_ptr = uhd::usrp::multi_usrp::make(usrp_device_addr);
+        // search for a device
+        uhd::device_addr_t hint;
+        if(!target_device.type.empty()){
+            LOG_DEBUG(USRP_UHD_i, "adding target device hint type=" << target_device.type);
+            hint["type"] = target_device.type;
+        }
+        if(!target_device.name.empty()){
+            LOG_DEBUG(USRP_UHD_i, "adding target device hint name=" << target_device.name);
+            hint["name"] = target_device.name;
+        }
+        if(!target_device.serial.empty()){
+            LOG_DEBUG(USRP_UHD_i, "adding target device hint serial=" << target_device.serial);
+            hint["serial"] = target_device.serial;
+        }
+        if(!target_device.ip_address.empty()){
+            LOG_DEBUG(USRP_UHD_i, "adding target device hint ip_address=" << target_device.ip_address);
+            hint["addr"] = target_device.ip_address;
+        }
+        LOG_DEBUG(USRP_UHD_i, "target device hint contains " << hint.size() << " values");
+
+        if(hint.size() == 0){
+            return;
+        }
+
+        uhd::device_addrs_t dev_addrs = uhd::device::find(hint);
+        if( dev_addrs.size() == 0){
+            LOG_ERROR(USRP_UHD_i,"COULD NOT FIND MATCHING USRP DEVICE!");
+            throw CF::PropertySet::InvalidConfiguration();
+        }
+
+        LOG_DEBUG(USRP_UHD_i, "Found " << dev_addrs.size() << " devices, choosing first one found.")
+
+        usrp_device_ptr = uhd::usrp::multi_usrp::make(dev_addrs[0]);
 
         // get_rx/tx_freq will throw an exception if set_rx/tx_freq has not already been called
         for (size_t chan = 0; chan < usrp_device_ptr->get_rx_num_channels(); chan++) {
@@ -1021,6 +1071,7 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
 
     } catch (...) {
         LOG_ERROR(USRP_UHD_i,"USRP COULD NOT BE INITIALIZED!");
+        clearBookkeeping();
         throw CF::PropertySet::InvalidConfiguration();
     }
 }
@@ -1041,7 +1092,9 @@ void USRP_UHD_i::updateDeviceInfo() {
 
     device_channels.clear();
     size_t num_rx_channels = usrp_device_ptr->get_rx_num_channels();
+    LOG_DEBUG(USRP_UHD_i,"updateDeviceInfo|found " << num_rx_channels << " rx channels");
     size_t num_tx_channels = usrp_device_ptr->get_tx_num_channels();
+    LOG_DEBUG(USRP_UHD_i,"updateDeviceInfo|found " << num_tx_channels << " tx channels");
     usrp_ranges.resize(num_rx_channels+num_tx_channels);
     for (size_t chan = 0; chan < num_rx_channels; chan++) {
         usrp_channel_struct availChan;

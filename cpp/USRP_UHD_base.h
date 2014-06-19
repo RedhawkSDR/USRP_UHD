@@ -42,13 +42,13 @@ class USRP_UHD_base : public frontend::FrontendTunerDevice<frontend_tuner_status
 
         // Member variables exposed as properties
         bool update_available_devices;
-        std::string device_ip_address;
         std::string device_reference_source_global;
         float device_rx_gain_global;
         float device_tx_gain_global;
         std::string device_group_id_global;
         std::string device_rx_mode;
         std::string device_tx_mode;
+        target_device_struct target_device;
         std::vector<connection_descriptor_struct> connectionTable;
         std::vector<usrp_device_struct> available_devices;
         std::vector<usrp_channel_struct> device_channels;

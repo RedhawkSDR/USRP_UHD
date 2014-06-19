@@ -123,14 +123,6 @@ void USRP_UHD_base::loadProperties()
                 "external",
                 "configure");
 
-    addProperty(device_ip_address,
-                "device_ip_address",
-                "device_ip_address",
-                "readwrite",
-                "",
-                "external",
-                "execparam,configure");
-
     addProperty(device_reference_source_global,
                 "INTERNAL",
                 "device_reference_source_global",
@@ -186,6 +178,15 @@ void USRP_UHD_base::loadProperties()
 
     frontend_listener_allocation = frontend::frontend_listener_allocation_struct();
     frontend_tuner_allocation = frontend::frontend_tuner_allocation_struct();
+    addProperty(target_device,
+                target_device_struct(),
+                "target_device",
+                "target_device",
+                "readwrite",
+                "",
+                "external",
+                "configure");
+
     addProperty(connectionTable,
                 "connectionTable",
                 "",
