@@ -1233,7 +1233,7 @@ long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
     // if first samples in buffer, update timestamps
     if(num_samps*2 == usrp_tuners[tuner_id].buffer_size){
         usrp_tuners[tuner_id].output_buffer_time = bulkio::time::utils::now();
-        usrp_tuners[tuner_id].output_buffer_time.twsec = _metadata.time_spec.get_real_secs();
+        usrp_tuners[tuner_id].output_buffer_time.twsec = (double)_metadata.time_spec.get_full_secs();
         usrp_tuners[tuner_id].output_buffer_time.tfsec = _metadata.time_spec.get_frac_secs();
         if (usrp_tuners[tuner_id].time_up.twsec <= 0)
             usrp_tuners[tuner_id].time_up = usrp_tuners[tuner_id].output_buffer_time;
