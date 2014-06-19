@@ -570,7 +570,8 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     fts.center_frequency = 0.0;
     fts.sample_rate = 0.0;
     fts.bandwidth = 0.0;
-    fts.gain = 0.0;
+    // fts.gain = 0.0; // don't have to reset gain since it's not part of allocation
+    fts.stream_id = 0.0;
     return true;
 }
 
@@ -769,13 +770,13 @@ void USRP_UHD_i::deviceGroupIdChanged(const std::string* old_value, const std::s
 std::string USRP_UHD_i::getStreamId(size_t tuner_id) {
     if (tuner_id >= usrp_tuners.size())
         return "ERR: INVALID TUNER ID";
-    if (usrp_tuners[tuner_id].stream_id.empty()){
+    if (frontend_tuner_status[tuner_id].stream_id.empty()){
         std::ostringstream id;
         id<<"tuner_freq_"<<long(frontend_tuner_status[tuner_id].center_frequency)<<"_Hz_"<<frontend::uuidGenerator();
-        usrp_tuners[tuner_id].stream_id = id.str();
+        frontend_tuner_status[tuner_id].stream_id = id.str();
         usrp_tuners[tuner_id].update_sri = true;
     }
-    return usrp_tuners[tuner_id].stream_id;
+    return frontend_tuner_status[tuner_id].stream_id;
 }
 
 /* acquire prop_lock prior to calling this function */
@@ -980,6 +981,7 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
             frontend_tuner_status[tuner_id].reference_source = source_prop;
             frontend_tuner_status[tuner_id].gain = device_channels[tuner_id].gain_current;
             frontend_tuner_status[tuner_id].group_id = device_group_id_global;
+            frontend_tuner_status[tuner_id].stream_id.clear();
 
             //frontend_tuner_status[tuner_id].tuner_number = tuner_id;
             frontend_tuner_status[tuner_id].tuner_number = device_channels[tuner_id].chan_num;
@@ -1004,8 +1006,6 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
             else
                 sprintf(tmp,"%.2f",device_channels[tuner_id].rate_min);
             frontend_tuner_status[tuner_id].available_sample_rate = std::string(tmp);
-            //sprintf(tmp,"%.2f",40e6); // fixed bandwidth of 40 MHz
-            //frontend_tuner_status[tuner_id].available_bandwidth = std::string(tmp);
             if( frontend::floatingPointCompare(device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].bandwidth_max) < 0 )
                 sprintf(tmp,"%.2f-%.2f",device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].bandwidth_max);
             else

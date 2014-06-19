@@ -33,6 +33,7 @@ struct frontend_tuner_status_struct_struct : public frontend::default_frontend_t
     double sample_rate_tolerance;
     short tuner_number;
     bool valid;
+    std::string stream_id;
 };
 
 inline bool operator>>= (const CORBA::Any& a, frontend_tuner_status_struct_struct& s) {
@@ -97,13 +98,16 @@ inline bool operator>>= (const CORBA::Any& a, frontend_tuner_status_struct_struc
         else if (!strcmp("FRONTEND::tuner_status::valid", props[idx].id)) {
             if (!(props[idx].value >>= s.valid)) return false;
         }
+        else if (!strcmp("FRONTEND::tuner_status::stream_id", props[idx].id)) {
+            if (!(props[idx].value >>= s.stream_id)) return false;
+        }
     }
     return true;
 };
 
 inline void operator<<= (CORBA::Any& a, const frontend_tuner_status_struct_struct& s) {
     CF::Properties props;
-    props.length(19);
+    props.length(20);
     props[0].id = CORBA::string_dup("FRONTEND::tuner_status::allocation_id_csv");
     props[0].value <<= s.allocation_id_csv;
     props[1].id = CORBA::string_dup("FRONTEND::tuner_status::available_bandwidth");
@@ -142,6 +146,8 @@ inline void operator<<= (CORBA::Any& a, const frontend_tuner_status_struct_struc
     props[17].value <<= s.tuner_type;
     props[18].id = CORBA::string_dup("FRONTEND::tuner_status::valid");
     props[18].value <<= s.valid;
+    props[19].id = CORBA::string_dup("FRONTEND::tuner_status::stream_id");
+    props[19].value <<= s.stream_id;
     a <<= props;
 };
 
@@ -183,6 +189,8 @@ inline bool operator== (const frontend_tuner_status_struct_struct& s1, const fro
     if (s1.tuner_type!=s2.tuner_type)
         return false;
     if (s1.valid!=s2.valid)
+        return false;
+    if (s1.stream_id!=s2.stream_id)
         return false;
     return true;
 };

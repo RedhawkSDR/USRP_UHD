@@ -266,7 +266,7 @@ void USRP_UHD_base::assignListener(const std::string& listen_alloc_id, const std
         for (unsigned int i=0; i<streamids.size(); i++) {
             bool foundEntry = false;
             for (std::vector<connection_descriptor_struct>::iterator entry=this->connectionTable.begin();entry!=this->connectionTable.end();entry++) {
-                if ((entry->stream_id == streamids[i]) and (entry->connection_id == listen_alloc_id)) {
+                if ((entry->stream_id == streamids[i]) and (entry->connection_id == listen_alloc_id) and (entry->port_name == port_names[i])) {
                     foundEntry = true;
                     break;
                 }

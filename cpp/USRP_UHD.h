@@ -92,7 +92,7 @@ private:
 
 /** Device Individual Tuner. This structure contains stream specific data for channel/tuner to include:
  *      - Data buffer
- *      - Additional stream metadata (stream_id & timestamps)
+ *      - Additional stream metadata (timestamps)
  */
 struct usrpTunerStruct {
     usrpTunerStruct(){
@@ -118,7 +118,6 @@ struct usrpTunerStruct {
     BULKIO::PrecisionUTCTime output_buffer_time;
     BULKIO::PrecisionUTCTime time_up;
     BULKIO::PrecisionUTCTime time_down;
-    std::string stream_id;
     bool update_sri;
     boost::mutex *lock;
 
@@ -127,7 +126,6 @@ struct usrpTunerStruct {
         bulkio::sri::zeroTime(output_buffer_time);
         bulkio::sri::zeroTime(time_up);
         bulkio::sri::zeroTime(time_down);
-        stream_id.clear();
         update_sri = false;
     };
 };
@@ -242,7 +240,7 @@ class USRP_UHD_i : public USRP_UHD_base
         std::vector<usrpRangesStruct> usrp_ranges; // freq/bw/sr/gain ranges supported by each tuner channel
                                                    // indices map to tuner_id
                                                    // protected by prop_lock
-        std::vector<usrpTunerStruct> usrp_tuners; // data buffer/stream_id/timestamps, lock
+        std::vector<usrpTunerStruct> usrp_tuners; // data buffer/timestamps, lock
                                                   // indices map to tuner_id
                                                   // each element protected by corresponding usrp_tuners[tuner_id].lock
         std::vector<uhd::rx_streamer::sptr> usrp_rx_streamers; // indices map to usrp_tuners[tuner_id].tuner_number

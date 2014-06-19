@@ -89,6 +89,9 @@
       <simple id="FRONTEND::tuner_status::valid" name="valid" type="boolean">
         <description>Indicates if the tuner is in a valid state. For DDCs, false indicates the attached CHANNELIZER has moved such that the DDC can no longer tune to the appropriate frequency.</description>
       </simple>
+      <simple id="FRONTEND::tuner_status::stream_id" name="stream_id" type="string">
+        <description>Stream ID associated with tuner/allocation</description>
+      </simple>
     </struct>
     <configurationkind kindtype="configure"/>
   </structsequence>
