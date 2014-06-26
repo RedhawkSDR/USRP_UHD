@@ -25,10 +25,6 @@ public:
         _udelay = (__useconds_t)(_delay * 1000000);
     };
 
-    void interrupt(){
-        _mythread->interrupt();
-    }
-
     // kick off the thread
     void start() {
         if (_mythread == 0) {
@@ -41,12 +37,6 @@ public:
     void run() {
         int state = NORMAL;
         while (_thread_running and (state != FINISH)) {
-            // yield to other threads if necessary
-            try{
-                boost::this_thread::interruption_point();
-            } catch(const boost::thread_interrupted& ){
-                usleep(_udelay);
-            }
             state = service_function();
             if (state == NOOP) usleep(_udelay);
         }
@@ -89,6 +79,39 @@ private:
     boost::mutex _eor_mutex;
 };
 
+typedef struct ticket_lock {
+    ticket_lock(){
+        cond=NULL;
+        mutex=NULL;
+        queue_head=queue_tail=0;
+    }
+    boost::condition_variable* cond;
+    boost::mutex* mutex;
+    size_t queue_head, queue_tail;
+} ticket_lock_t;
+
+class scoped_tuner_lock{
+    public:
+        scoped_tuner_lock(ticket_lock_t& _ticket){
+            ticket = &_ticket;
+
+            boost::mutex::scoped_lock lock(*ticket->mutex);
+            queue_me = ticket->queue_tail++;
+            while (queue_me != ticket->queue_head)
+            {
+                ticket->cond->wait(lock);
+            }
+        }
+        ~scoped_tuner_lock(){
+            boost::mutex::scoped_lock lock(*ticket->mutex);
+            ticket->queue_head++;
+            ticket->cond->notify_all();
+        }
+    private:
+        ticket_lock_t* ticket;
+        size_t queue_me;
+};
+
 
 /** Device Individual Tuner. This structure contains stream specific data for channel/tuner to include:
  *      - Data buffer
@@ -96,7 +119,6 @@ private:
  */
 struct usrpTunerStruct {
     usrpTunerStruct(){
-        lock = NULL;
 
         // size buffer within CORBA transfer limits
         // Multiply by some number < 1 to leave some margin for the CORBA header
@@ -119,7 +141,7 @@ struct usrpTunerStruct {
     BULKIO::PrecisionUTCTime time_up;
     BULKIO::PrecisionUTCTime time_down;
     bool update_sri;
-    boost::mutex *lock;
+    ticket_lock_t lock;
 
     void reset(){
         buffer_size = 0;
@@ -127,8 +149,9 @@ struct usrpTunerStruct {
         bulkio::sri::zeroTime(time_up);
         bulkio::sri::zeroTime(time_down);
         update_sri = false;
-    };
+    }
 };
+
 struct usrpRangesStruct {
     usrpRangesStruct(){
         reset();
@@ -207,7 +230,6 @@ class USRP_UHD_i : public USRP_UHD_base
         bool deviceDeleteTuning(size_t tuner_id){return deviceDeleteTuning(frontend_tuner_status[tuner_id],tuner_id);}
 
         // serviceFunctionTransmit thread
-        void interrupt(size_t tuner_id);
         MultiProcessThread<USRP_UHD_i> *receive_service_thread;
         MultiProcessThread<USRP_UHD_i> *transmit_service_thread;
         boost::mutex receive_service_thread_lock;

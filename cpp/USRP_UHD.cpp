@@ -37,6 +37,12 @@ USRP_UHD_i::USRP_UHD_i(char *devMgr_ior, char *id, char *lbl, char *sftwrPrfl, C
 
 USRP_UHD_i::~USRP_UHD_i()
 {
+    for (size_t tuner_id = 0; tuner_id < usrp_tuners.size(); tuner_id++) {
+        if (usrp_tuners[tuner_id].lock.cond != NULL)
+            delete usrp_tuners[tuner_id].lock.cond;
+        if (usrp_tuners[tuner_id].lock.mutex != NULL)
+            delete usrp_tuners[tuner_id].lock.mutex;
+    }
 }
 
 
@@ -194,7 +200,7 @@ int USRP_UHD_i::serviceFunctionReceive(){
             continue;
         }
 
-        exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+        scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
 
         //Check to make sure channel is allocated still
         if (getControlAllocationId(tuner_id).empty()){
@@ -391,8 +397,7 @@ void USRP_UHD_i::deviceEnable(frontend_tuner_status_struct_struct &fts, size_t t
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id);
 
     // Start Streaming Now
-    interrupt(tuner_id);
-    exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+    scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
     usrpEnable(tuner_id); // modifies fts.enabled appropriately
 }
 void USRP_UHD_i::deviceDisable(frontend_tuner_status_struct_struct &fts, size_t tuner_id){
@@ -403,8 +408,7 @@ void USRP_UHD_i::deviceDisable(frontend_tuner_status_struct_struct &fts, size_t 
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id);
 
     // Stop Streaming Now
-    interrupt(tuner_id);
-    exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+    scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
     usrpDisable(tuner_id); //modifies fts.enabled appropriately
 }
 bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struct &request, frontend_tuner_status_struct_struct &fts, size_t tuner_id){
@@ -451,8 +455,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
         } // end scope for prop_lock
 
-        interrupt(tuner_id);
-        exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+        scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
 
         // account for RFInfo_pkt that specifies RF and IF frequencies
         // since request is always in RF, and USRP may be operating in IF
@@ -506,8 +509,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
         } // end scope for prop_lock
 
-        interrupt(tuner_id);
-        exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+        scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
 
         // account for RFInfo_pkt that specifies RF and IF frequencies
         // since request is always in RF, and USRP may be operating in IF
@@ -546,8 +548,7 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     //if (tuner_id >= usrp_tuners.size())
     //    throw FRONTEND::BadParameterException("deviceDeleteTuning: INVALID TUNER ID");
 
-    interrupt(tuner_id);
-    exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+    scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
 
     // get stream id (creates one if not already created for this tuner)
     std::string stream_id = getStreamId(tuner_id);
@@ -573,23 +574,6 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     // fts.gain = 0.0; // don't have to reset gain since it's not part of allocation
     fts.stream_id = 0.0;
     return true;
-}
-
-void USRP_UHD_i::interrupt(size_t tuner_id){
-    if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
-        exclusive_lock lock(receive_service_thread_lock);
-        if(receive_service_thread != NULL){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " interrupting RX thread");
-            receive_service_thread->interrupt();
-        }
-    }
-    else if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
-        exclusive_lock lock(transmit_service_thread_lock);
-        if(transmit_service_thread != NULL){
-            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " interrupting TX thread");
-            transmit_service_thread->interrupt();
-        }
-    }
 }
 
 /** A templated service function that is generic between data types. */
@@ -622,7 +606,7 @@ template <class IN_PORT_TYPE> bool USRP_UHD_i::transmitHelper(IN_PORT_TYPE *data
             continue;
         }
 
-        exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+        scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
 
         //Check to make sure channel is allocated still
         if (getControlAllocationId(tuner_id).empty()){
@@ -648,8 +632,7 @@ void USRP_UHD_i::updateRxRfFlowId(std::string rf_flow_id){
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
         if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
 
-            interrupt(tuner_id);
-            exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
             frontend_tuner_status[tuner_id].rf_flow_id = rf_flow_id;
             usrp_tuners[tuner_id].update_sri = true;
         }
@@ -662,8 +645,7 @@ void USRP_UHD_i::updateTxRfFlowId(std::string rf_flow_id){
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
         if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
 
-            interrupt(tuner_id);
-            exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
             frontend_tuner_status[tuner_id].rf_flow_id = rf_flow_id;
             usrp_tuners[tuner_id].update_sri = true;
         }
@@ -674,8 +656,7 @@ void USRP_UHD_i::updateGroupId(std::string group){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " group=" << group);
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
 
-        interrupt(tuner_id);
-        exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+        scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
         frontend_tuner_status[tuner_id].group_id = group;
     }
 }
@@ -685,6 +666,12 @@ void USRP_UHD_i::updateGroupId(std::string group){
  */
 void USRP_UHD_i::setNumChannels(size_t num_rx, size_t num_tx){
     USRP_UHD_base::setNumChannels(num_rx+num_tx);
+    for (size_t tuner_id = 0; tuner_id < usrp_tuners.size(); tuner_id++) {
+        if (usrp_tuners[tuner_id].lock.cond != NULL)
+            delete usrp_tuners[tuner_id].lock.cond;
+        if (usrp_tuners[tuner_id].lock.mutex != NULL)
+            delete usrp_tuners[tuner_id].lock.mutex;
+    }
     usrp_tuners.clear();
     usrp_tuners.resize(num_rx+num_tx);
     usrp_rx_streamers.resize(num_rx);
@@ -1016,8 +1003,10 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
         }
         char tmp[128];
         for (size_t tuner_id = 0; tuner_id < device_channels.size(); tuner_id++) {
-            if (usrp_tuners[tuner_id].lock == NULL)
-                usrp_tuners[tuner_id].lock = new boost::mutex;
+            if (usrp_tuners[tuner_id].lock.cond == NULL)
+                usrp_tuners[tuner_id].lock.cond = new boost::condition_variable;
+            if (usrp_tuners[tuner_id].lock.mutex == NULL)
+                usrp_tuners[tuner_id].lock.mutex = new boost::mutex;
 
             frontend_tuner_status[tuner_id].allocation_id_csv = "";
             frontend_tuner_status[tuner_id].tuner_type = device_channels[tuner_id].tuner_type;
@@ -1190,9 +1179,7 @@ void USRP_UHD_i::updateDeviceRxGain(double gain) {
 
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
         if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
-
-            interrupt(tuner_id);
-            exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
             usrp_device_ptr->set_rx_gain(gain,frontend_tuner_status[tuner_id].tuner_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_rx_gain(frontend_tuner_status[tuner_id].tuner_number);
         }
@@ -1208,8 +1195,7 @@ void USRP_UHD_i::updateDeviceTxGain(double gain) {
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
         if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
 
-            interrupt(tuner_id);
-            exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
             usrp_device_ptr->set_tx_gain(gain,frontend_tuner_status[tuner_id].tuner_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_tx_gain(frontend_tuner_status[tuner_id].tuner_number);
         }
@@ -1228,8 +1214,7 @@ void USRP_UHD_i::updateDeviceReferenceSource(std::string source){
     }
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
 
-        interrupt(tuner_id);
-        exclusive_lock tuner_lock(*usrp_tuners[tuner_id].lock);
+        scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
         frontend_tuner_status[tuner_id].reference_source = source_prop;
     }
 
@@ -1262,19 +1247,20 @@ long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
     uhd::rx_metadata_t _metadata;
 
     if (usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number].get() == NULL){
+        LOG_TRACE(USRP_UHD_i,"usrpReceive|about to create RX Streamer");
         usrpCreateRxStream(tuner_id);
         LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
     }
 
     size_t num_samps = 0;
     try{
-    	num_samps = usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number]->recv(
+        num_samps = usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number]->recv(
             &usrp_tuners[tuner_id].output_buffer.at(usrp_tuners[tuner_id].buffer_size), // address of buffer to start filling data
             samps_to_rx,
             _metadata);
     } catch(...){
     	LOG_ERROR(USRP_UHD_i,"usrpReceive|uhd::rx_streamer->recv() threw unknown exception");
-    	return 0;
+        return 0;
     }
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " num_samps=" << num_samps);
     usrp_tuners[tuner_id].buffer_size += (num_samps*2);
@@ -1455,7 +1441,7 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
      *  - sc8 - complex<int8_t>
      */
     std::string cpu_format = "sc16"; // complex dataShort
-    LOG_DEBUG(USRP_UHD_i,"usrpCreateRxStream|using cpu_format" << cpu_format);
+    LOG_DEBUG(USRP_UHD_i,"usrpCreateRxStream|using cpu_format " << cpu_format);
 
     /*!
      * The OTW format is a string that describes the format over-the-wire.
@@ -1466,7 +1452,7 @@ bool USRP_UHD_i::usrpCreateRxStream(size_t tuner_id){
     std::string wire_format = "sc16";
     if(device_rx_mode == "8bit")
         wire_format = "sc8"; // enable 8-bit mode with "sc8"
-    LOG_DEBUG(USRP_UHD_i,"usrpCreateRxStream|using wire_format" << wire_format);
+    LOG_DEBUG(USRP_UHD_i,"usrpCreateRxStream|using wire_format " << wire_format);
 
     uhd::stream_args_t stream_args(cpu_format,wire_format);
     stream_args.channels.push_back(frontend_tuner_status[tuner_id].tuner_number);
@@ -1666,8 +1652,7 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
 
         if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
 
-            interrupt(idx);
-            exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
 
             // If the freq has changed (change in stream) or the tuner is disabled, then set it as disabled
             bool is_tuner_enabled = frontend_tuner_status[idx].enabled;
@@ -1687,8 +1672,7 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
 
         } else if (frontend_tuner_status[idx].tuner_type == "TX") {
 
-            interrupt(idx);
-            exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
 
             // set hw with new value
             usrp_device_ptr->set_tx_freq(freq, frontend_tuner_status[idx].tuner_number);
@@ -1745,8 +1729,7 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
 
         if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
 
-            interrupt(idx);
-            exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
 
             // set hw with new value
             usrp_device_ptr->set_rx_bandwidth(opt_bw, frontend_tuner_status[idx].tuner_number);
@@ -1757,8 +1740,7 @@ void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) 
 
         } else if (frontend_tuner_status[idx].tuner_type == "TX") {
 
-            interrupt(idx);
-            exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
 
             // set hw with new value
             usrp_device_ptr->set_tx_bandwidth(opt_bw, frontend_tuner_status[idx].tuner_number);
@@ -1825,8 +1807,7 @@ void USRP_UHD_i::setTunerEnable(const std::string& allocation_id, bool enable) {
         throw FRONTEND::FrontendException((std::string(__PRETTY_FUNCTION__)+" - ID "+allocation_id+" does not have authorization to modify the tuner").c_str());
     }
 
-    interrupt(idx);
-    exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
+    scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
     if(enable)
         usrpEnable(idx);
     else
@@ -1872,8 +1853,7 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
 
         if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
 
-            interrupt(idx);
-            exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
 
             // set hw with new value
             usrp_device_ptr->set_rx_rate(opt_sr, frontend_tuner_status[idx].tuner_number);
@@ -1885,8 +1865,7 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
 
         } else if (frontend_tuner_status[idx].tuner_type == "TX") {
 
-            interrupt(idx);
-            exclusive_lock tuner_lock(*usrp_tuners[idx].lock);
+            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
 
             // set hw with new value
             usrp_device_ptr->set_tx_rate(opt_sr, frontend_tuner_status[idx].tuner_number);
