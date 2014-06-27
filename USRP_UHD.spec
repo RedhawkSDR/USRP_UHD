@@ -12,7 +12,7 @@ Prefix:         %{_prefix}
 
 Name:           USRP_UHD
 Version:        3.0.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Device %{name}
 
 Group:          REDHAWK/Devices
