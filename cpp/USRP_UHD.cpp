@@ -1266,10 +1266,16 @@ long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
         LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " got rx_streamer[" << frontend_tuner_status[tuner_id].tuner_number << "]");
     }
 
-    size_t num_samps = usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number]->recv(
+    size_t num_samps = 0;
+    try{
+    	num_samps = usrp_rx_streamers[frontend_tuner_status[tuner_id].tuner_number]->recv(
             &usrp_tuners[tuner_id].output_buffer.at(usrp_tuners[tuner_id].buffer_size), // address of buffer to start filling data
             samps_to_rx,
             _metadata);
+    } catch(...){
+    	LOG_ERROR(USRP_UHD_i,"usrpReceive|uhd::rx_streamer->recv() threw unknown exception");
+    	return 0;
+    }
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " tuner_id=" << tuner_id << " num_samps=" << num_samps);
     usrp_tuners[tuner_id].buffer_size += (num_samps*2);
 
