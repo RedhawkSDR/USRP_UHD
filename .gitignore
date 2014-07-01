@@ -15,4 +15,5 @@ ltmain.sh
 missing
 USRP_UHD
 *.o
+*.pyc
 .md5sums
