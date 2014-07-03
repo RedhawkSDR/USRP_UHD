@@ -253,35 +253,37 @@ CF::Properties* USRP_UHD_base::getTunerStatus(const std::string& allocation_id)
 
 void USRP_UHD_base::assignListener(const std::string& listen_alloc_id, const std::string& allocation_id)
 {
-    listeners[listen_alloc_id] = allocation_id;
-    std::vector<connection_descriptor_struct> old_table = this->connectionTable;
-    for (std::map<std::string, std::string>::iterator listener=listeners.begin();listener!=listeners.end();listener++) {
-        std::vector<std::string> streamids;
-        std::vector<std::string> port_names;
-        for (std::vector<connection_descriptor_struct>::iterator entry=this->connectionTable.begin();entry!=this->connectionTable.end();entry++) {
-            if (entry->connection_id == listener->second) {
-                streamids.push_back(entry->stream_id);
-                port_names.push_back(entry->port_name);
-            }
-        }
-        for (unsigned int i=0; i<streamids.size(); i++) {
-            bool foundEntry = false;
-            for (std::vector<connection_descriptor_struct>::iterator entry=this->connectionTable.begin();entry!=this->connectionTable.end();entry++) {
-                if ((entry->stream_id == streamids[i]) and (entry->connection_id == listen_alloc_id) and (entry->port_name == port_names[i])) {
-                    foundEntry = true;
-                    break;
-                }
-            }
-            if (!foundEntry) {
-                connection_descriptor_struct tmp;
-                tmp.stream_id = streamids[i];
-                tmp.connection_id = listen_alloc_id;
-                tmp.port_name = port_names[i];
-                this->connectionTable.push_back(tmp);
-            }
+    // find control allocation_id
+    std::string existing_alloc_id = allocation_id;
+    std::map<std::string,std::string>::iterator existing_listener;
+    while ((existing_listener=listeners.find(existing_alloc_id)) != listeners.end())
+        existing_alloc_id = existing_listener->second;
+    listeners[listen_alloc_id] = existing_alloc_id;
+
+    std::vector<connection_descriptor_struct> old_table = connectionTable;
+    std::vector<connection_descriptor_struct> new_entries;
+    for (std::vector<connection_descriptor_struct>::iterator entry=connectionTable.begin();entry!=connectionTable.end();entry++) {
+        if (entry->connection_id == existing_alloc_id) {
+            connection_descriptor_struct tmp;
+            tmp.connection_id = listen_alloc_id;
+            tmp.stream_id = entry->stream_id;
+            tmp.port_name = entry->port_name;
+            new_entries.push_back(tmp);
         }
     }
-    this->connectionTableChanged(&old_table, &this->connectionTable);
+    bool foundEntry = false;
+    for (std::vector<connection_descriptor_struct>::iterator new_entry=new_entries.begin();new_entry!=new_entries.end();new_entry++) {
+        for (std::vector<connection_descriptor_struct>::iterator entry=connectionTable.begin();entry!=connectionTable.end();entry++) {
+            if (entry == new_entry) {
+                foundEntry = true;
+                break;
+            }
+        }
+        if (!foundEntry) {
+            connectionTable.push_back(*new_entry);
+        }
+    }
+    connectionTableChanged(&old_table, &connectionTable);
 }
 
 void USRP_UHD_base::removeListener(const std::string& listen_alloc_id)
@@ -299,7 +301,7 @@ void USRP_UHD_base::removeListener(const std::string& listen_alloc_id)
         }
     }
     ExtendedCF::UsesConnectionSequence_var tmp;
-    // Check to see if port "dataShort_out" is on connectionTable (old or new)
+    // Check to see if port "dataShort_out" has a connection for this listener
     tmp = this->dataShort_out->connections();
     for (unsigned int i=0; i<this->dataShort_out->connections()->length(); i++) {
         std::string connection_id = ossie::corba::returnString(tmp[i].connectionId);
