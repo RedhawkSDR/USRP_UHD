@@ -911,8 +911,8 @@ void USRP_UHD_i::updateAvailableDevices(){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
     // EMPTY SEQ
     available_devices.clear();
-    uhd::device_addr_t himt;
-    uhd::device_addrs_t device_addrs = uhd::device::find(himt);
+    uhd::device_addr_t hint;
+    uhd::device_addrs_t device_addrs = uhd::device::find(hint);
     if (device_addrs.empty())
         LOG_WARN(USRP_UHD_i, "WARNING: NO UHD (USRP) DEVICES FOUND!\n");
     for (size_t i = 0; i < device_addrs.size(); i++) {
