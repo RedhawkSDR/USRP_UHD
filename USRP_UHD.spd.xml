@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE softpkg PUBLIC "-//JTRS//DTD SCA V2.2.2 SPD//EN" "softpkg.dtd">
 <!--
 This file is protected by Copyright. Please refer to the COPYRIGHT file
 distributed with this source distribution.
@@ -18,9 +18,8 @@ details.
 You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see http://www.gnu.org/licenses/.
 -->
-<!DOCTYPE softpkg PUBLIC "-//JTRS//DTD SCA V2.2.2 SPD//EN" "softpkg.dtd">
-<softpkg id="DCE:0dd76dd3-b44e-4e6a-b44a-896980682972" name="USRP_UHD" type="sca_compliant" version="3.0.0">
-  <title></title>
+<softpkg version="3.0.1" id="DCE:0dd76dd3-b44e-4e6a-b44a-896980682972" name="USRP_UHD" type="sca_compliant">
+  <title/>
   <author>
     <name>null</name>
   </author>

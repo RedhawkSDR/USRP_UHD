@@ -30,8 +30,8 @@ Prefix:         %{_prefix}
 %define _infodir       %{_prefix}/info
 
 Name:           USRP_UHD
-Version:        3.0.0
-Release:        10%{?dist}
+Version:        3.0.1
+Release:        1%{?dist}
 Summary:        Device %{name}
 
 Group:          REDHAWK/Devices
