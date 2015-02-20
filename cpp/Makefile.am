@@ -23,7 +23,8 @@ bin_PROGRAMS = USRP_UHD
 
 xmldir = $(prefix)/dev/devices/USRP_UHD/
 dist_xml_DATA = ../USRP_UHD.scd.xml ../USRP_UHD.prf.xml ../USRP_UHD.spd.xml
-
+confdir = $(prefix)/dev/devices/USRP_UHD/
+dist_conf_SCRIPTS = ../nodeconfig.py
 
 distclean-local:
 	rm -f config.*
@@ -48,3 +49,5 @@ USRP_UHD_LDADD = $(PROJECTDEPS_LIBS) $(BOOST_LDFLAGS) $(BOOST_THREAD_LIB) $(BOOS
 USRP_UHD_CXXFLAGS = -Wall $(PROJECTDEPS_CFLAGS) $(BOOST_CPPFLAGS) $(INTERFACEDEPS_CFLAGS) $(redhawk_INCLUDES_auto) $(LIBUHD_FLAGS) $(LIBUUID_FLAGS)
 USRP_UHD_LDFLAGS = -Wall $(redhawk_LDFLAGS_auto)
 
+create-usrp-uhd-node: install-am
+	../nodeconfig.py --inplace --clean --domainname=$(DOMAINNAME) --usrptype=$(USRPTYPE) --usrpip=$(USRPIP)

@@ -28,6 +28,24 @@ AC_CORBA_ORB
 OSSIE_CHECK_OSSIE
 OSSIE_SDRROOT_AS_PREFIX
 
+AC_ARG_WITH(domainname,
+        AS_HELP_STRING([--with-domainname=[domain name]], [Provide a domain name to the generated node, defaults to REDHAWK_DEV]),
+        usrp_uhd_node_domain=$withval,
+        usrp_uhd_node_domain=REDHAWK_DEV)
+AC_SUBST(DOMAINNAME, $usrp_uhd_node_domain)
+
+AC_ARG_WITH(usrptype,
+        AS_HELP_STRING([--with-usrptype=[usrp type]], [Provide a USRP type to the generated node, defaults to usrp2]),
+        usrp_uhd_node_type=$withval,
+        usrp_uhd_node_type=usrp2)
+AC_SUBST(USRPTYPE, $usrp_uhd_node_type)
+
+AC_ARG_WITH(usrpip,
+        AS_HELP_STRING([--with-usrpip=[usrp ip address]], [Provide a USRP ip address to the generated node, defaults to '']),
+        usrp_uhd_node_ip=$withval,
+        usrp_uhd_node_ip='')
+AC_SUBST(USRPIP, $usrp_uhd_node_ip)
+
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Dependencies

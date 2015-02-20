@@ -90,6 +90,9 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,redhawk,redhawk,-)
 %dir %{_prefix}/dev/devices/%{name}
+%{_prefix}/dev/devices/%{name}/nodeconfig.py
+%{_prefix}/dev/devices/%{name}/nodeconfig.pyc
+%{_prefix}/dev/devices/%{name}/nodeconfig.pyo
 %{_prefix}/dev/devices/%{name}/USRP_UHD.scd.xml
 %{_prefix}/dev/devices/%{name}/USRP_UHD.prf.xml
 %{_prefix}/dev/devices/%{name}/USRP_UHD.spd.xml
