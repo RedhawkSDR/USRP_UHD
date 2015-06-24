@@ -29,7 +29,7 @@ Prefix:         %{_prefix}
 %define _mandir        %{_prefix}/man
 %define _infodir       %{_prefix}/info
 
-Name:           USRP_UHD
+Name:           rh.USRP_UHD
 Version:        3.0.2
 Release:        1%{?dist}
 Summary:        Device %{name}
@@ -68,7 +68,7 @@ Device %{name}
 # Implementation cpp
 pushd cpp
 ./reconf
-%define _bindir %{_prefix}/dev/devices/USRP_UHD/cpp
+%define _bindir %{_prefix}/dev/devices/rh/USRP_UHD/cpp
 %configure
 make %{?_smp_mflags}
 popd
@@ -78,7 +78,7 @@ popd
 rm -rf $RPM_BUILD_ROOT
 # Implementation cpp
 pushd cpp
-%define _bindir %{_prefix}/dev/devices/USRP_UHD/cpp
+%define _bindir %{_prefix}/dev/devices/rh/USRP_UHD/cpp
 make install DESTDIR=$RPM_BUILD_ROOT
 popd
 
@@ -89,12 +89,12 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,redhawk,redhawk,-)
-%dir %{_prefix}/dev/devices/%{name}
-%{_prefix}/dev/devices/%{name}/nodeconfig.py
-%{_prefix}/dev/devices/%{name}/nodeconfig.pyc
-%{_prefix}/dev/devices/%{name}/nodeconfig.pyo
-%{_prefix}/dev/devices/%{name}/USRP_UHD.scd.xml
-%{_prefix}/dev/devices/%{name}/USRP_UHD.prf.xml
-%{_prefix}/dev/devices/%{name}/USRP_UHD.spd.xml
-%{_prefix}/dev/devices/%{name}/cpp
+%dir %{_prefix}/dev/devices/rh/USRP_UHD
+%{_prefix}/dev/devices/rh/USRP_UHD/nodeconfig.py
+%{_prefix}/dev/devices/rh/USRP_UHD/nodeconfig.pyc
+%{_prefix}/dev/devices/rh/USRP_UHD/nodeconfig.pyo
+%{_prefix}/dev/devices/rh/USRP_UHD/USRP_UHD.scd.xml
+%{_prefix}/dev/devices/rh/USRP_UHD/USRP_UHD.prf.xml
+%{_prefix}/dev/devices/rh/USRP_UHD/USRP_UHD.spd.xml
+%{_prefix}/dev/devices/rh/USRP_UHD/cpp
 

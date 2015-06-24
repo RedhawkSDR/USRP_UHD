@@ -3,14 +3,14 @@
 # This file is protected by Copyright. Please refer to the COPYRIGHT file 
 # distributed with this source distribution.
 # 
-# This file is part of REDHAWK USRP_UHD.
+# This file is part of REDHAWK rh.USRP_UHD.
 # 
-# REDHAWK USRP_UHD is free software: you can redistribute it and/or modify it under 
+# REDHAWK rh.USRP_UHD is free software: you can redistribute it and/or modify it under 
 # the terms of the GNU Lesser General Public License as published by the Free 
 # Software Foundation, either version 3 of the License, or (at your option) any 
 # later version.
 # 
-# REDHAWK USRP_UHD is distributed in the hope that it will be useful, but WITHOUT 
+# REDHAWK rh.USRP_UHD is distributed in the hope that it will be useful, but WITHOUT 
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
 # FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
 # details.
@@ -39,7 +39,7 @@ class NodeConfig(object):
         if options.domainname == None:
             raise ConfigurationError("A domainname is required")
         
-        # Verify the base GPP profile exists
+        # Verify the base rh.USRP_UHD profile exists
         self.usrp_uhd_templates = {"spd": os.path.join(self.options.sdrroot, "dev", self.options.usrppath[1:], "USRP_UHD.spd.xml"),
                                    "prf": os.path.join(self.options.sdrroot, "dev", self.options.usrppath[1:], "USRP_UHD.prf.xml"),
                                    "scd": os.path.join(self.options.sdrroot, "dev", self.options.usrppath[1:], "USRP_UHD.scd.xml")}
@@ -48,12 +48,12 @@ class NodeConfig(object):
             if not os.path.exists(template):
                 raise ConfigurationError("%s missing" % template)
                 
-        self.nodedir = os.path.join(self.options.sdrroot, "dev", "nodes", self.options.nodename)
+        self.nodedir = os.path.join(self.options.sdrroot, "dev", "nodes", self.options.nodename.replace('.','/'))
         self.path_to_dcd = os.path.join(self.nodedir , "DeviceManager.dcd.xml")
             
         # Figure out where we are going to write the USRP_UHD profile
         if self.options.inplace:
-            self.usrp_path = os.path.join(self.options.sdrroot, "dev", "devices", "USRP_UHD")
+            self.usrp_path = os.path.join(self.options.sdrroot, "dev", "devices", "rh", "USRP_UHD")
         else:
             self.usrp_path = os.path.join(self.nodedir, "USRP_UHD")
             
@@ -116,12 +116,12 @@ class NodeConfig(object):
         except OSError:
             raise Exception, "Could not create device manager directory"
 
-        USRP_UHD_componentfile = 'USRP_UHD__' + uuidgen()
+        USRP_UHD_componentfile = 'rh.USRP_UHD__' + uuidgen()
         if self.options.inplace:
-            compfiles = [{'id':USRP_UHD_componentfile, 'localfile':os.path.join('/devices', 'USRP_UHD', 'USRP_UHD.spd.xml')}]
+            compfiles = [{'id':USRP_UHD_componentfile, 'localfile':os.path.join('/devices', 'rh', 'USRP_UHD', 'USRP_UHD.spd.xml')}]
         else:
-            compfiles = [{'id':USRP_UHD_componentfile, 'localfile':os.path.join('/nodes', self.options.nodename, 'USRP_UHD', 'USRP_UHD.spd.xml')}]
-        compplacements = [{'refid':USRP_UHD_componentfile, 'instantiations':[{'id':self.uuids["componentinstantiation"], 'usagename':'USRP_UHD_' + self.hostname.replace('.', '_')}]}]
+            compfiles = [{'id':USRP_UHD_componentfile, 'localfile':os.path.join('/nodes', self.options.nodename.replace('.','/'), 'USRP_UHD', 'USRP_UHD.spd.xml')}]
+        compplacements = [{'refid':USRP_UHD_componentfile, 'instantiations':[{'id':self.uuids["componentinstantiation"], 'usagename':'rh.USRP_UHD_' + self.hostname.replace('.', '_')}]}]
 
         #####################
         # DeviceManager files
@@ -168,7 +168,7 @@ class NodeConfig(object):
         #####################
         
         if not self.options.silent:
-            self._log.debug("Creating USRP_UHD profile <" + self.usrp_path + ">")
+            self._log.debug("Creating rh.USRP_UHD profile <" + self.usrp_path + ">")
             
         if not self.options.inplace:
             if not os.path.exists(self.usrp_path):
@@ -207,7 +207,7 @@ class NodeConfig(object):
         # Set the parameters for the target_device
         for struct in _prf.get_struct():
             if struct.get_name() in "target_device":
-                for simple in struct.get_simple():
+                for simple in struct.get_props():
                     if simple.get_name() in self.props:
                         simple.set_value(str(self.props[simple.get_name()]))
                                
@@ -239,14 +239,16 @@ if __name__ == "__main__":
                       help="Optional user-set identifier")
     parser.add_option("--usrpserial", dest="serial", default="",
                       help="Globally unique identifier")
+    parser.add_option("--nousrp", dest="nousrp", default=False, action="store_true",
+                      help="Create node without targetting a USRP")
     parser.add_option("--sdrroot", dest="sdrroot", default=os.path.expandvars("${SDRROOT}"),
                       help="Path to the sdrroot; if none is given, ${SDRROOT} is used.")
-    parser.add_option("--nodename", dest="nodename", default="DevMgr_USRP_UHD_%s" % socket.gethostname(),
-                      help="Desired nodename, if none is given DevMgr_USRP_UHD_${HOST} is used")
+    parser.add_option("--nodename", dest="nodename", default="rh.DevMgr_USRP_UHD_%s" % socket.gethostname(),
+                      help="Desired nodename, if none is given rh.DevMgr_USRP_UHD_${HOST} is used")
     parser.add_option("--inplace", dest="inplace", default=False, action="store_true",
-                      help="Update the USRP_UHD profile in-place; default is to create a USRP_UHD configuration in the node folder")
-    parser.add_option("--usrppath", dest="usrppath", default="/devices/USRP_UHD",
-                      help="The device manager file system absolute path to the USRP_UHD, default '/devices/USRP_UHD'")
+                      help="Update the rh.USRP_UHD profile in-place; default is to create a rh.USRP_UHD configuration in the node folder")
+    parser.add_option("--usrppath", dest="usrppath", default="/devices/rh/USRP_UHD",
+                      help="The device manager file system absolute path to the rh.USRP_UHD, default '/devices/rh/USRP_UHD'")
     parser.add_option("--silent", dest="silent", default=False, action="store_true",
                       help="Suppress all logging except errors")
     parser.add_option("--clean", dest="clean", default=False, action="store_true",
@@ -256,8 +258,8 @@ if __name__ == "__main__":
 
     (options, args) = parser.parse_args()
 
-    if options.type == "" and options.ip_address == "" and options.name == "" and options.serial == "":
-        raise ConfigurationError("At least one of these options must be specified: usrptype, usrpip, usrpname, usrpserial")
+    if not options.nousrp and options.type == "" and options.ip_address == "" and options.name == "" and options.serial == "":
+        raise ConfigurationError("At least one of these options must be specified: usrptype, usrpip, usrpname, usrpserial, nousrp")
 
     # Configure logging
     logging.basicConfig(format='%(name)-12s:%(levelname)-8s: %(message)s', level=logging.INFO)

@@ -17,13 +17,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see http://www.gnu.org/licenses/.
 #
-ossieName = USRP_UHD
-bindir = $(prefix)/dev/devices/USRP_UHD/cpp/
+ossieName = rh.USRP_UHD
+bindir = $(prefix)/dev/devices/rh/USRP_UHD/cpp/
 bin_PROGRAMS = USRP_UHD
 
-xmldir = $(prefix)/dev/devices/USRP_UHD/
+xmldir = $(prefix)/dev/devices/rh/USRP_UHD/
 dist_xml_DATA = ../USRP_UHD.scd.xml ../USRP_UHD.prf.xml ../USRP_UHD.spd.xml
-confdir = $(prefix)/dev/devices/USRP_UHD/
+confdir = $(prefix)/dev/devices/rh/USRP_UHD/
 dist_conf_SCRIPTS = ../nodeconfig.py
 
 distclean-local:
