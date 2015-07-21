@@ -43,18 +43,20 @@ BuildRequires:  redhawk-devel >= 1.10
 Requires:       redhawk >= 1.10
 
 %if "%{?rhel}" == "6"
-Requires: libuuid-devel
-BuildRequires: libuuid-devel
+Requires:       libuuid-devel
+BuildRequires:  libuuid-devel
 %else
-Requires: e2fsprogs-devel
-BuildRequires: e2fsprogs-devel
+Requires:       e2fsprogs-devel
+BuildRequires:  e2fsprogs-devel
 %endif
 
 # Interface requirements
 BuildRequires:  frontendInterfaces >= 2.2 bulkioInterfaces >= 1.10
 Requires:       frontendInterfaces >= 2.2 bulkioInterfaces >= 1.10
 
-BuildRequires: uhd-devel
+BuildRequires:  uhd-devel
+
+Obsoletes:      USRP_UHD < 4.0.0
 
 %description
 Device %{name}
