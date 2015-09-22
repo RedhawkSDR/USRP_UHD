@@ -25,8 +25,13 @@ xmldir = $(prefix)/dev/devices/rh/USRP_UHD/
 dist_xml_DATA = ../USRP_UHD.scd.xml ../USRP_UHD.prf.xml ../USRP_UHD.spd.xml
 confdir = $(prefix)/dev/devices/rh/USRP_UHD/
 dist_conf_SCRIPTS = ../nodeconfig.py
+ACLOCAL_AMFLAGS = -I m4 -I${OSSIEHOME}/share/aclocal/ossie
+AUTOMAKE_OPTIONS = subdir-objects
+
+
 
 distclean-local:
+	rm -rf m4
 	rm -f config.*
 	rm -rf autom4te.cache
 	rm -f acinclude.m4
@@ -45,8 +50,8 @@ distclean-local:
 # you wish to manually control these options.
 include $(srcdir)/Makefile.am.ide
 USRP_UHD_SOURCES = $(redhawk_SOURCES_auto)
-USRP_UHD_LDADD = $(PROJECTDEPS_LIBS) $(BOOST_LDFLAGS) $(BOOST_THREAD_LIB) $(BOOST_REGEX_LIB) $(BOOST_SYSTEM_LIB) $(INTERFACEDEPS_LIBS) $(redhawk_LDADD_auto) $(LIBUHD_LIBS) $(LIBUUID_LIBS)
-USRP_UHD_CXXFLAGS = -Wall $(PROJECTDEPS_CFLAGS) $(BOOST_CPPFLAGS) $(INTERFACEDEPS_CFLAGS) $(redhawk_INCLUDES_auto) $(LIBUHD_FLAGS) $(LIBUUID_FLAGS)
+USRP_UHD_LDADD = $(SOFTPKG_LIBS) $(PROJECTDEPS_LIBS) $(BOOST_LDFLAGS) $(BOOST_THREAD_LIB) $(BOOST_REGEX_LIB) $(BOOST_SYSTEM_LIB) $(INTERFACEDEPS_LIBS) $(redhawk_LDADD_auto) $(LIBUHD_LIBS) $(LIBUUID_LIBS)
+USRP_UHD_CXXFLAGS = -Wall $(SOFTPKG_CFLAGS) $(PROJECTDEPS_CFLAGS) $(BOOST_CPPFLAGS) $(INTERFACEDEPS_CFLAGS) $(redhawk_INCLUDES_auto) $(LIBUHD_FLAGS) $(LIBUUID_FLAGS)
 USRP_UHD_LDFLAGS = -Wall $(redhawk_LDFLAGS_auto)
 
 create-usrp-uhd-node: install-am

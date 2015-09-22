@@ -39,8 +39,8 @@ License:        LGPLv3+
 Source0:        %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  redhawk-devel >= 1.10
-Requires:       redhawk >= 1.10
+BuildRequires:  redhawk-devel >= 2.0
+Requires:       redhawk >= 2.0
 
 %if "%{?rhel}" == "6"
 Requires:       libuuid-devel
@@ -51,8 +51,8 @@ BuildRequires:  e2fsprogs-devel
 %endif
 
 # Interface requirements
-BuildRequires:  frontendInterfaces >= 2.2 bulkioInterfaces >= 1.10
-Requires:       frontendInterfaces >= 2.2 bulkioInterfaces >= 1.10
+BuildRequires:  frontendInterfaces >= 2.2 bulkioInterfaces >= 2.0
+Requires:       frontendInterfaces >= 2.2 bulkioInterfaces >= 2.0
 
 BuildRequires:  uhd-devel
 
@@ -60,6 +60,8 @@ Obsoletes:      USRP_UHD < 4.0.0
 
 %description
 Device %{name}
+ * Commit: __REVISION__
+ * Source Date/Time: __DATETIME__
 
 
 %prep
