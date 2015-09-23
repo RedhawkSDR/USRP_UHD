@@ -244,8 +244,10 @@ int USRP_UHD_i::serviceFunctionReceive(){
 
             // Send updated SRI
             if (usrp_tuners[tuner_id].update_sri){
+                LOG_DEBUG(USRP_UHD_i,"USRP_UHD_i::serviceFunctionReceive|creating SRI for tuner: "<<tuner_id<<" with stream id: "<< stream_id);
                 BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
                 sri.mode = 1; // complex
+                //printSRI(&sri,"USRP_UHD_i::serviceFunctionReceive SRI"); // DEBUG
                 dataShort_out->pushSRI(sri);
                 usrp_tuners[tuner_id].update_sri = false;
             }
@@ -575,8 +577,10 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
 
     // get stream id (creates one if not already created for this tuner)
     std::string stream_id = getStreamId(tuner_id);
+    LOG_DEBUG(USRP_UHD_i,"USRP_UHD_i::deviceDeleteTuning|creating SRI for tuner: "<<tuner_id<<" with stream id: "<< stream_id);
     BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
     sri.mode = 1; // complex
+    //printSRI(&sri,"USRP_UHD_i::deviceDeleteTuning SRI"); // DEBUG
     updateSriTimes(&sri, usrp_tuners[tuner_id].time_up.twsec, usrp_tuners[tuner_id].time_down.twsec, frontend::J1970);
     dataShort_out->pushSRI(sri);
     usrp_tuners[tuner_id].update_sri = false;
@@ -595,7 +599,7 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     fts.sample_rate = 0.0;
     fts.bandwidth = 0.0;
     // fts.gain = 0.0; // don't have to reset gain since it's not part of allocation
-    fts.stream_id = 0.0;
+    fts.stream_id.clear();
     return true;
 }
 
@@ -803,6 +807,9 @@ std::string USRP_UHD_i::getStreamId(size_t tuner_id) {
         id<<"tuner_freq_"<<long(frontend_tuner_status[tuner_id].center_frequency)<<"_Hz_"<<frontend::uuidGenerator();
         frontend_tuner_status[tuner_id].stream_id = id.str();
         usrp_tuners[tuner_id].update_sri = true;
+        LOG_DEBUG(USRP_UHD_i,"USRP_UHD_i::getStreamId - created NEW stream id: "<< frontend_tuner_status[tuner_id].stream_id);
+    } else {
+        LOG_DEBUG(USRP_UHD_i,"USRP_UHD_i::getStreamId - returning EXISTING stream id: "<< frontend_tuner_status[tuner_id].stream_id);
     }
     return frontend_tuner_status[tuner_id].stream_id;
 }
@@ -1390,10 +1397,10 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
         std::string stream_id = getStreamId(tuner_id);
 
         if(!prev_enabled){
-            LOG_DEBUG(USRP_UHD_i,"usrpEnable|tuner_id=" << tuner_id << " pushing SRI for stream_id=" << stream_id);
+            LOG_DEBUG(USRP_UHD_i,"USRP_UHD_i::usrpEnable|creating SRI for tuner: "<<tuner_id<<" with stream id: "<< stream_id);
             BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
             sri.mode = 1; // complex
-            //printSRI(&sri); // DEBUG
+            //printSRI(&sri,"USRP_UHD_i::usrpEnable SRI"); // DEBUG
             dataShort_out->pushSRI(sri);
             usrp_tuners[tuner_id].update_sri = false;
         }
