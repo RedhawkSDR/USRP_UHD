@@ -38,11 +38,11 @@ import frontend_tuner_unit_test_base as fe
 DEBUG_LEVEL = 3
 
 # DUT='USRP|<type>|<uhd driver version>'
-DUT='USRP|usrp2|uhd.3.7.1'
+#DUT='USRP|usrp2|uhd.3.7.1'
 #DUT='USRP|b200|uhd.3.7.1'
 #DUT='USRP|usrp3|uhd.3.7.1'
 #DUT='USRP|usrp2|uhd.3.5.5'
-#DUT='USRP|usrp2|uhd.3.5.3'
+DUT='USRP|usrp2|uhd.3.5.3'
 
 IMPL_ID='cpp'
 
