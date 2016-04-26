@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see http://www.gnu.org/licenses/.
  */
-AC_INIT(USRP_UHD, 3.0.1)
+AC_INIT(USRP_UHD, 3.0.2)
 AM_INIT_AUTOMAKE(nostdinc)
 
 AC_PROG_CC
