@@ -124,8 +124,17 @@ class FrontendTunerTests(unittest.TestCase):
                 'dataXML':'xmlIn',
                 'dataChar':'charIn',
                 'dataFile':'fileIn'}
-    
+
+    from ossie.cf import CF
+    from omniORB import any
+
     @classmethod
+    def _query(cls, props=tuple() ):
+        pl = [CF.DataType( id=p, value=any.to_any(None)) for p in props ]
+        qr = cls.dut.query( pl )
+        return ossie.properties.props_to_dict(qr)
+    
+    #@classmethod
     def devicePreLaunch(self):
         pass
     @classmethod
@@ -177,7 +186,7 @@ class FrontendTunerTests(unittest.TestCase):
             self.dut = sb.Component(DEVICE_INFO['SPD'],execparams=execparams,configure=configure,initialize=initialize,impl=IMPL_ID)
         
         self.dut_ref = self.dut.ref._narrow(CF.Device)
-        
+
         ### device-specific post-launch commands
         self.devicePostLaunch()
 

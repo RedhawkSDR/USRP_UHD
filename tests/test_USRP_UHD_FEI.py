@@ -38,11 +38,14 @@ import frontend_tuner_unit_test_base as fe
 DEBUG_LEVEL = 3
 
 # DUT='USRP|<type>|<uhd driver version>'
-#DUT='USRP|usrp2|uhd.3.7.1'
-#DUT='USRP|b200|uhd.3.7.1'
-#DUT='USRP|usrp3|uhd.3.7.1'
-#DUT='USRP|usrp2|uhd.3.5.5'
-DUT='USRP|usrp2|uhd.3.5.3'
+# DUT='USRP|usrp2|uhd.3.5.3'
+# DUT='USRP|usrp2|uhd.3.5.5'
+# DUT='USRP|b200|uhd.3.7.1'
+# DUT='USRP|usrp2|uhd.3.7.1'
+# DUT='USRP|usrp3|uhd.3.7.1'
+# DUT='USRP|b200|uhd.3.7.3'
+DUT='USRP|usrp2|uhd.3.7.3'  # default
+# DUT='USRP|usrp3|uhd.3.7.3'
 
 IMPL_ID='cpp'
 
@@ -93,26 +96,26 @@ if 'USRP' in DUT:
                                                 'GAIN_MIN' :0.0,
                                                 'GAIN_MAX' :73.0}}
         #elif  DUT.split('|')[1] == 'usrp2':
-        # assume usrp2
+        # assume usrp2 - just fake it, we'll figure it out once we can
+        #                query the USRP for it's daughterboard type.
         else:
             dut_capabilities = {'RX_DIGITIZER':{'COMPLEX': True,
-                                                'CF_MAX': 2220.0e6,
-                                                'CF_MIN':   48.75e6,
-                                                'BW_MAX':   40.0e6,
-                                                'BW_MIN':   40.0e6,
-                                                'SR_MAX':   50.0e6,
-                                                'SR_MIN':  195.3125e3,
+                                                'CF_MAX': 0.0e6,
+                                                'CF_MIN': 0.0e6,
+                                                'BW_MAX': 0.0e6,
+                                                'BW_MIN': 0.0e6,
+                                                'SR_MAX': 0.0e6,
+                                                'SR_MIN': 0.0e3,
                                                 'GAIN_MIN' :0.0,
-                                                'GAIN_MAX' :38.0}}
+                                                'GAIN_MAX' :0.0}}
 
 #******* DO NOT MODIFY BELOW **********#
 DEVICE_INFO = {}
-DEVICE_INFO[dut_name] = dut_capabilities
-DEVICE_INFO[dut_name]['SPD'] = os.path.join(project_dir, 'USRP_UHD.spd.xml')
+DEVICE_INFO[dut_name]               = dut_capabilities
+DEVICE_INFO[dut_name]['SPD']        = os.path.join(project_dir, 'USRP_UHD.spd.xml')
 DEVICE_INFO[dut_name]['execparams'] = dut_execparams
-DEVICE_INFO[dut_name]['configure'] = dut_configure
+DEVICE_INFO[dut_name]['configure']  = dut_configure
 #******* DO NOT MODIFY ABOVE **********#
-
 
 
 class FrontendTunerTests(fe.FrontendTunerTests):
@@ -123,14 +126,46 @@ class FrontendTunerTests(fe.FrontendTunerTests):
         fe.set_debug_level(DEBUG_LEVEL)
         fe.set_device_info(DEVICE_INFO[dut_name])
         fe.set_impl_id(IMPL_ID)
-    
+  
     # Use functions below to add pre-/post-launch commands if your device has special startup requirements
     @classmethod
-    def devicePreLaunch(self):
+    def devicePreLaunch(cls):
         pass
+
     @classmethod
-    def devicePostLaunch(self):
-        pass
+    def devicePostLaunch(cls):
+        if 'usrp2' in DUT:
+            #print "device channel: ", cls._query( ("device_channels",) )
+            device_channels = cls._query( ("device_channels",) )['device_channels']
+
+            #print "daughterboard :: ", device_channels[0]['device_channels::ch_name']
+            ch_name = device_channels[0]['device_channels::ch_name']
+            if 'SBX' in ch_name:
+                print "Using capabilities for an SBX"
+                DEVICE_INFO[dut_name]['RX_DIGITIZER'] = {'COMPLEX': True,
+                                                         'CF_MAX': 4420.0e6,
+                                                         'CF_MIN':  380.0e6,
+                                                         'BW_MAX':   40.0e6,
+                                                         'BW_MIN':   40.0e6,
+                                                         'SR_MAX':   50.0e6,
+                                                         'SR_MIN':  195.3125e3,
+                                                         'GAIN_MIN' :0.0,
+                                                         'GAIN_MAX' :38.0}
+            elif 'WBX' in ch_name:
+                print "Using capabilities for an WBX"
+                DEVICE_INFO[dut_name]['RX_DIGITIZER'] = {'COMPLEX': True,
+                                                         'CF_MAX': 2220.0e6,
+                                                         'CF_MIN':   48.75e6,
+                                                         'BW_MAX':   40.0e6,
+                                                         'BW_MIN':   40.0e6,
+                                                         'SR_MAX':   50.0e6,
+                                                         'SR_MIN':  195.3125e3,
+                                                         'GAIN_MIN' :0.0,
+                                                         'GAIN_MAX' :38.0}
+            else:
+                print >> sys.stderr, "unable to determine daughterboard for this USRP2 device. Aborting." 
+                sys.exit()
+                
     
     # Use functions below to add pre-/post-release commands if your device has special shutdown requirements
     @classmethod
