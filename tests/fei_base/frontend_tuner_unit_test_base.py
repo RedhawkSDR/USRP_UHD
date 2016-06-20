@@ -134,7 +134,7 @@ class FrontendTunerTests(unittest.TestCase):
         qr = cls.dut.query( pl )
         return ossie.properties.props_to_dict(qr)
     
-    #@classmethod
+    @classmethod
     def devicePreLaunch(self):
         pass
     @classmethod
