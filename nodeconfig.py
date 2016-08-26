@@ -245,8 +245,8 @@ if __name__ == "__main__":
                       help="Path to the sdrroot; if none is given, ${SDRROOT} is used.")
     parser.add_option("--nodename", dest="nodename", default="rh.DevMgr_USRP_UHD_%s" % socket.gethostname(),
                       help="Desired nodename, if none is given rh.DevMgr_USRP_UHD_${HOST} is used")
-    parser.add_option("--inplace", dest="inplace", default=False, action="store_true",
-                      help="Update the rh.USRP_UHD profile in-place; default is to create a rh.USRP_UHD configuration in the node folder")
+    parser.add_option("--noinplace", dest="inplace", default=True, action="store_false",
+                      help="Create rh.USRP_UHD configuration in the node folder; default is to update the rh.USRP_UHD profile in-place.")
     parser.add_option("--usrppath", dest="usrppath", default="/devices/rh/USRP_UHD",
                       help="The device manager file system absolute path to the rh.USRP_UHD, default '/devices/rh/USRP_UHD'")
     parser.add_option("--silent", dest="silent", default=False, action="store_true",
