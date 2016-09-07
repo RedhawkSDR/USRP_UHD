@@ -33,6 +33,10 @@ and run this asset. To build from source, run the `build.sh` script found at the
 top level directory. To install to $SDRROOT, run `build.sh install`. Note: root
 privileges (`sudo`) may be required to install.
 
+## FEI Compliance Test Results
+
+See the [FEI Compliance Results](tests/FEI_Compliance_Results.md) document.
+
 ## Copyrights
 
 This work is protected by Copyright. Please refer to the
