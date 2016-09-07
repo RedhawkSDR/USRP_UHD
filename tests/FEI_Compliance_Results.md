@@ -46,6 +46,8 @@ UHD Warning:
 
 ### Summary Report
 
+The report statistics may differ depending on the daughtercards present in the USRP device. The following results are from a USRP N210 with a single WBX daughtercard.
+
 ```
 Report Statistics:
    Checks that returned "WARN" .................. 1
@@ -65,7 +67,7 @@ Report Statistics:
 
 ### `info` Details
 
-The `info` check is reporting that it is impossible to test full multi-out port capability with a single channel. The features that cannot be tested are not necessary for a single channel anyway.
+The `info` check is reporting that it is impossible to test full multi-out port capability with a single channel. The features that cannot be tested are not necessary for a single channel anyway. A USRP with multiple daughtercards and thus multiple RX_DIGITIZER tuners will not see this message, but may see a similar message since multi-out port tests are not complete.
 
 ```
 dataShort_out: Cannot fully test multiport because only single
