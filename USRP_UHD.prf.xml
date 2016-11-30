@@ -3,14 +3,14 @@
 This file is protected by Copyright. Please refer to the COPYRIGHT file
 distributed with this source distribution.
 
-This file is part of REDHAWK USRP_UHD.
+This file is part of REDHAWK rh.USRP_UHD.
 
-REDHAWK USRP_UHD is free software: you can redistribute it and/or modify it under
+REDHAWK rh.USRP_UHD is free software: you can redistribute it and/or modify it under
 the terms of the GNU Lesser General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option) any
 later version.
 
-REDHAWK USRP_UHD is distributed in the hope that it will be useful, but WITHOUT ANY
+REDHAWK rh.USRP_UHD is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
 details.
@@ -23,14 +23,12 @@ with this program.  If not, see http://www.gnu.org/licenses/.
   <simple id="DCE:cdc5ee18-7ceb-4ae6-bf4c-31f983179b4d" mode="readonly" name="device_kind" type="string">
     <description>This specifies the device kind</description>
     <value>FRONTEND::TUNER</value>
-    <kind kindtype="configure"/>
     <kind kindtype="allocation"/>
     <action type="eq"/>
   </simple>
   <simple id="DCE:0f99b2e4-9903-4631-9846-ff349d18ecfb" mode="readonly" name="device_model" type="string">
     <description> This specifies the specific device</description>
     <value>USRP</value>
-    <kind kindtype="configure"/>
     <kind kindtype="allocation"/>
     <action type="eq"/>
   </simple>
@@ -81,6 +79,33 @@ with this program.  If not, see http://www.gnu.org/licenses/.
       <simple id="FRONTEND::tuner_status::group_id" name="group_id" type="string">
         <description>Unique ID that specifies a group of Device.</description>
       </simple>
+      <simple id="FRONTEND::tuner_status::output_format" name="output_format" type="string">
+        <description>Indicates the SDDS digraph that describes the current output data format.</description>
+        <enumerations>
+          <enumeration label="SP" value="SP"/>
+          <enumeration label="SB" value="SB"/>
+          <enumeration label="SI" value="SI"/>
+          <enumeration label="SL" value="SL"/>
+          <enumeration label="SX" value="SX"/>
+          <enumeration label="SF" value="SF"/>
+          <enumeration label="SD" value="SD"/>
+          <enumeration label="CB" value="CB"/>
+          <enumeration label="CI" value="CI"/>
+          <enumeration label="CL" value="CL"/>
+          <enumeration label="CX" value="CX"/>
+          <enumeration label="CF" value="CF"/>
+          <enumeration label="CD" value="CD"/>
+        </enumerations>
+      </simple>
+      <simple id="FRONTEND::tuner_status::output_multicast" name="output_multicast" type="string">
+        <description>Multicast address for SDDS output.</description>
+      </simple>
+      <simple id="FRONTEND::tuner_status::output_port" name="output_port" type="long">
+        <description>Port number for SDDS output.</description>
+      </simple>
+      <simple id="FRONTEND::tuner_status::output_vlan" name="output_vlan" type="long">
+        <description>VLAN number for SDDS output. A value of zero (0) indicates no VLAN is used.</description>
+      </simple>
       <simple id="FRONTEND::tuner_status::reference_source" name="reference_source" type="long">
         <description>Indicates internal (0) vs external (1) reference source.</description>
         <enumerations>
@@ -99,6 +124,9 @@ with this program.  If not, see http://www.gnu.org/licenses/.
         <description>Allowable percentage over requested sample rate. This value is provided by the requester during allocation.</description>
         <units>%</units>
       </simple>
+      <simple id="FRONTEND::tuner_status::stream_id" name="stream_id" type="string">
+        <description>Stream ID associated with tuner/allocation</description>
+      </simple>
       <simple id="FRONTEND::tuner_status::tuner_number" name="tuner_number" type="short">
         <description>Physical tuner ID.</description>
       </simple>
@@ -108,22 +136,243 @@ with this program.  If not, see http://www.gnu.org/licenses/.
       <simple id="FRONTEND::tuner_status::valid" name="valid" type="boolean">
         <description>Indicates if the tuner is in a valid state. For DDCs, false indicates the attached CHANNELIZER has moved such that the DDC can no longer tune to the appropriate frequency.</description>
       </simple>
-      <simple id="FRONTEND::tuner_status::stream_id" name="stream_id" type="string">
-        <description>Stream ID associated with tuner/allocation</description>
+    </struct>
+    <configurationkind kindtype="property"/>
+  </structsequence>
+  <simple id="device_group_id_global" mode="readwrite" name="device_group_id_global" type="string">
+    <description>Any allocations requested on this device must have a matching group_id field (ie - the group_id value defined in the allocation structure must match the group_id for the device). These values default to an empty string and therefore match by default.  
+Please see the Frontend Interfaces v2.0 documentation for a full description. </description>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="device_reference_source_global" mode="readwrite" name="device_reference_source_global" type="string">
+    <value>INTERNAL</value>
+    <enumerations>
+      <enumeration label="INTERNAL" value="INTERNAL"/>
+      <enumeration label="EXTERNAL" value="EXTERNAL"/>
+      <enumeration label="MIMO" value="MIMO"/>
+    </enumerations>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="device_rx_gain_global" mode="readwrite" name="device_rx_gain_global" type="float">
+    <description>Global RX_DIGITIZER gain value</description>
+    <value>0</value>
+    <units>dB</units>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="device_rx_mode" mode="readwrite" name="device_rx_mode" type="string">
+    <value>16bit</value>
+    <enumerations>
+      <enumeration label="16bit" value="16bit"/>
+      <enumeration label="8bit" value="8bit"/>
+    </enumerations>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="device_tx_gain_global" mode="readwrite" name="device_tx_gain_global" type="float">
+    <description>Global TX gain value</description>
+    <value>0</value>
+    <units>dB</units>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="device_tx_mode" mode="readwrite" name="device_tx_mode" type="string">
+    <value>16bit</value>
+    <enumerations>
+      <enumeration label="16bit" value="16bit"/>
+      <enumeration label="8bit" value="8bit"/>
+    </enumerations>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <structsequence id="sdds_network_settings" mode="readwrite" name="sdds_network_settings">
+    <description>Settings for the network connection(s). Leave empty to disable SDDS output. A single entry will be used for all RX_DIGITIZERs, with the ip_address being incremented for each RX_DIGITIZER beyond the first. Otherwise, include an entry for each RX_DIGITIZER. If there is more than one entry, but less than the number of RX_DIGITIZERs, RX_DIGITIZERs without settings will have SDDS output disabled.</description>
+    <struct id="sdds_network_settings_struct" name="sdds_network_settings_struct">
+      <description>Settings for the network connection.</description>
+      <simple id="sdds_network_settings::interface" name="interface" type="string">
+        <description>The network interface you intend to be present or blank if no check is needed. Do not include the VLAN in the interface name. (eg. For eth0.28 the interface should be set to &quot;eth0&quot; NOT &quot;eth0.28&quot;).</description>
+        <value>eth0</value>
+      </simple>
+      <simple id="sdds_network_settings::ip_address" name="ip_address" type="string">
+        <description>For the unicast case this is the destination IP address to send the UDP packets. For the multicast case this is the multicast group. If there is only a single network settings struct entry, the IP address specified will be used for the first RX_DIGITIZER, and then be incremented for each additional RX_DIGITIZER. Leave blank (empty string) to disable SDDS output for the RX_DIGITIZER.</description>
+        <value>127.0.0.1</value>
+      </simple>
+      <simple id="sdds_network_settings::port" name="port" type="long">
+        <description>UDP port used to publish data.</description>
+        <value>29495</value>
+      </simple>
+      <simple id="sdds_network_settings::vlan" name="vlan" type="ushort">
+        <description>Virtual Lan address to use. Ignored if set to 0.</description>
+        <value>0</value>
       </simple>
     </struct>
-    <configurationkind kindtype="configure"/>
+    <configurationkind kindtype="property"/>
   </structsequence>
-  <struct id="FRONTEND::listener_allocation" name="frontend_listener_allocation">
-    <description>Allocates a listener (subscriber) based off a previous allocation </description>
-    <simple id="FRONTEND::listener_allocation::existing_allocation_id" name="existing_allocation_id" type="string">
-      <description></description>
+  <struct id="sdds_settings" mode="readwrite" name="sdds_settings">
+    <description>Various SDDS-related settings.</description>
+    <simple id="sdds_settings::attach_user_id" mode="readwrite" name="attach_user_id" type="string">
+      <description>Used as a parameter to the attach call.</description>
+      <value>anonymous</value>
+      <action type="external"/>
     </simple>
-    <simple id="FRONTEND::listener_allocation::listener_allocation_id" name="listener_allocation_id" type="string">
-      <description></description>
+    <simple id="sdds_settings::downstream_should_use_sri" name="downstream_give_sri_priority" type="boolean">
+      <description>Informs downstream components, via the BULKIO_SRI_PRIORITY keyword, to override the xdelta and real/complex mode found in the SDDS Packet header in place of the xdelta and mode found in the supplied SRI.</description>
+      <value>false</value>
     </simple>
-    <configurationkind kindtype="allocation"/>
+    <simple id="sdds_settings::sdds_endian_representation" mode="readwrite" name="sdds_endian_representation" type="long">
+      <description>The endianness (Big or Little) of the data portion of the SDDS packet. Defaults to Network Byte Order (Big Endian). Native will use the endiance of the host. This will also affect the SRI keyword DATA_REF_STR and set it appropriately.</description>
+      <value>1</value>
+      <enumerations>
+        <enumeration label="NATIVE" value="-1"/>
+        <enumeration label="LITTLE_ENDIAN" value="0"/>
+        <enumeration label="BIG_ENDIAN" value="1"/>
+      </enumerations>
+      <action type="external"/>
+    </simple>
+    <simple id="sdds_settings::ttv_override" mode="readwrite" name="ttv_override" type="long">
+      <description>Specify how to derive the TTV value, which is used in the SDDS header and in the attach call. Default behavior is to derive from BulkIO metadata.
+
+Time Tag Valid (ttv) field denotes if the values stored within the Time Tag information fields (Time Tag, Time Tag Extension) are valid.  Unless overridden, this is derived from the tcstatus field of BulkIO Timestamps and is set to true if equal to TCS_VALID and false otherwise.</description>
+      <value>-1</value>
+      <enumerations>
+        <enumeration label="BULKIO.TCSTATUS" value="-1"/>
+        <enumeration label="INVALID" value="0"/>
+        <enumeration label="VALID" value="1"/>
+      </enumerations>
+      <action type="external"/>
+    </simple>
+    <simple id="sdds_settings::buffer_size" name="buffer_size" type="ulong">
+      <description>Size of SDDS port's internal buffer, specified in terms of how many maximum-capacity BulkIO packets it can hold. The USRP sizes the BulkIO packets to about 90% of the max CORBA transfer size, which is typically specified in /etc/omniORB.cfg on the host system, and is typically on the order of 2 MBs.</description>
+      <value>20</value>
+      <units>BulkIO Packets</units>
+    </simple>
+    <configurationkind kindtype="property"/>
   </struct>
+  <struct id="target_device" mode="readwrite" name="target_device">
+    <description>Information used to specify a particular USRP device to target. All fields are optional. First device found that meets the specified criteria is selected.</description>
+    <simple id="target::type" name="type" type="string">
+      <value></value>
+    </simple>
+    <simple id="target::ip_address" name="ip_address" type="string">
+      <description>IP address of the USRP for network connected devices.</description>
+      <value></value>
+    </simple>
+    <simple id="target::name" name="name" type="string">
+      <description>Name of the USRP device</description>
+      <value></value>
+    </simple>
+    <simple id="target::serial" name="serial" type="string">
+      <description>Serial number of the USRP device</description>
+      <value></value>
+    </simple>
+    <configurationkind kindtype="property"/>
+  </struct>
+  <simple id="update_available_devices" mode="readwrite" name="update_available_devices" type="boolean">
+    <description>When set to true, the available_usrp_devices property will be updated with all available usrps found on the network. Similar output to the uhd_find_devices command</description>
+    <value>False</value>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <structsequence id="available_devices" mode="readonly" name="available_devices">
+    <description>Lists all USRPS found on the network (updated by setting update_available_devices property to true)</description>
+    <struct id="available_devices::usrp_device" mode="readonly" name="usrp_device">
+      <simple id="available_devices::type" mode="readonly" name="type" type="string">
+        <action type="external"/>
+      </simple>
+      <simple id="available_devices::ip_address" mode="readonly" name="ip_address" type="string">
+        <action type="external"/>
+      </simple>
+      <simple id="available_devices::name" mode="readonly" name="name" type="string">
+        <action type="external"/>
+      </simple>
+      <simple id="available_devices::serial" mode="readonly" name="serial" type="string">
+        <action type="external"/>
+      </simple>
+    </struct>
+    <configurationkind kindtype="property"/>
+  </structsequence>
+  <structsequence id="device_motherboards" mode="readonly" name="device_motherboards">
+    <struct id="motherboards::usrp_motherboard" mode="readonly" name="usrp_motherboard">
+      <simple id="device_motherboards::mb_name" mode="readonly" name="mb_name" type="string">
+        <action type="external"/>
+      </simple>
+      <simple id="device_motherboards::mb_ip" mode="readonly" name="mb_ip" type="string">
+        <action type="external"/>
+      </simple>
+    </struct>
+    <configurationkind kindtype="property"/>
+  </structsequence>
+  <structsequence id="device_channels" mode="readonly" name="device_channels">
+    <description>Describes the daughtercards and channels found in the USRP</description>
+    <struct id="channels::usrp_channel" mode="readonly" name="usrp_channel">
+      <simple id="device_channels::ch_name" mode="readonly" name="ch_name" type="string">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::tuner_type" mode="readonly" name="tuner_type" type="string">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::chan_num" mode="writeonly" name="chan_num" type="short">
+        <description>This is the per tuner type channel number. This means that there could be a tuner 0 for an RX and a tuner 0 for a TX.</description>
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::antenna" mode="readonly" name="antenna" type="string">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::bandwidth_current" mode="readonly" name="bandwidth_current" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::bandwidth_min" mode="readwrite" name="bandwidth_min" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::bandwidth_max" mode="readwrite" name="bandwidth_max" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::rate_current" mode="readonly" name="rate_current" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::rate_min" mode="readonly" name="rate_min" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::rate_max" mode="readonly" name="rate_max" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::freq_current" mode="readonly" name="freq_current" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::freq_min" mode="readonly" name="freq_min" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::freq_max" mode="readonly" name="freq_max" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::gain_current" mode="readonly" name="gain_current" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::gain_min" mode="readonly" name="gain_min" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::gain_max" mode="readonly" name="gain_max" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::clock_min" mode="readwrite" name="clock_min" type="double">
+        <action type="external"/>
+      </simple>
+      <simple id="device_channels::clock_max" mode="readwrite" name="clock_max" type="double">
+        <action type="external"/>
+      </simple>
+    </struct>
+    <configurationkind kindtype="property"/>
+  </structsequence>
+  <structsequence id="connectionTable">
+    <struct id="connectionTable::connection_descriptor" name="connection_descriptor">
+      <simple id="connectionTable::connection_id" name="connection_id" type="string"/>
+      <simple id="connectionTable::stream_id" name="stream_id" type="string"/>
+      <simple id="connectionTable::port_name" name="port_name" type="string"/>
+    </struct>
+    <configurationkind kindtype="property"/>
+  </structsequence>
   <struct id="FRONTEND::tuner_allocation" name="frontend_tuner_allocation">
     <description>Frontend Interfaces v2.0 main allocation structure</description>
     <simple id="FRONTEND::tuner_allocation::tuner_type" name="tuner_type" type="string">
@@ -170,208 +419,14 @@ False: Does not need control and can just attach to any currently tasked device 
     </simple>
     <configurationkind kindtype="allocation"/>
   </struct>
-  <structsequence id="connectionTable">
-    <struct id="connectionTable::connection_descriptor" name="connection_descriptor">
-      <simple id="connectionTable::connection_id" name="connection_id" type="string">
-        <kind kindtype="configure"/>
-      </simple>
-      <simple id="connectionTable::stream_id" name="stream_id" type="string">
-        <kind kindtype="configure"/>
-      </simple>
-      <simple id="connectionTable::port_name" name="port_name" type="string">
-        <kind kindtype="configure"/>
-      </simple>
-    </struct>
-    <configurationkind kindtype="configure"/>
-  </structsequence>
-  <structsequence id="available_devices" mode="readonly" name="available_devices">
-    <description>Lists all USRPS found on the network (updated by setting update_available_devices property to true)</description>
-    <struct id="available_devices::usrp_device" mode="readonly" name="usrp_device">
-      <simple id="available_devices::type" mode="readonly" name="type" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="available_devices::ip_address" mode="readonly" name="ip_address" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="available_devices::name" mode="readonly" name="name" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="available_devices::serial" mode="readonly" name="serial" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <configurationkind kindtype="configure"/>
-    </struct>
-    <configurationkind kindtype="configure"/>
-  </structsequence>
-  <simple id="update_available_devices" mode="readwrite" name="update_available_devices" type="boolean">
-    <description>When set to true, the available_usrp_devices property will be updated with all available usrps found on the network. Similar output to the uhd_find_devices command</description>
-    <value>False</value>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
-  <simple id="device_reference_source_global" mode="readwrite" name="device_reference_source_global" type="string">
-    <value>INTERNAL</value>
-    <enumerations>
-      <enumeration label="INTERNAL" value="INTERNAL"/>
-      <enumeration label="EXTERNAL" value="EXTERNAL"/>
-      <enumeration label="MIMO" value="MIMO"/>
-    </enumerations>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
-  <simple id="device_rx_gain_global" mode="readwrite" name="device_rx_gain_global" type="float">
-    <description>Global RX_DIGITIZER gain value</description>
-    <value>0</value>
-    <units>dB</units>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
-  <simple id="device_tx_gain_global" mode="readwrite" name="device_tx_gain_global" type="float">
-    <description>Global TX gain value</description>
-    <value>0</value>
-    <units>dB</units>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
-  <simple id="device_group_id_global" mode="readwrite" name="device_group_id_global" type="string">
-    <description>Any allocations requested on this device must have a matching group_id field (ie - the group_id value defined in the allocation structure must match the group_id for the device). These values default to an empty string and therefore match by default.  
-Please see the Frontend Interfaces v2.0 documentation for a full description. </description>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
-  <structsequence id="device_channels" mode="readonly" name="device_channels">
-    <description>Describes the daughtercards and channels found in the USRP</description>
-    <struct id="channels::usrp_channel" mode="readonly" name="usrp_channel">
-      <simple id="device_channels::ch_name" mode="readonly" name="ch_name" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::tuner_type" mode="readonly" name="tuner_type" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::chan_num" mode="writeonly" name="chan_num" type="short">
-        <description>This is the per tuner type channel number. This means that there could be a tuner 0 for an RX and a tuner 0 for a TX.</description>
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::antenna" mode="readonly" name="antenna" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::bandwidth_current" mode="readonly" name="bandwidth_current" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::bandwidth_min" mode="readwrite" name="bandwidth_min" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::bandwidth_max" mode="readwrite" name="bandwidth_max" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::rate_current" mode="readonly" name="rate_current" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::rate_min" mode="readonly" name="rate_min" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::rate_max" mode="readonly" name="rate_max" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::freq_current" mode="readonly" name="freq_current" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::freq_min" mode="readonly" name="freq_min" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::freq_max" mode="readonly" name="freq_max" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::gain_current" mode="readonly" name="gain_current" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::gain_min" mode="readonly" name="gain_min" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::gain_max" mode="readonly" name="gain_max" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::clock_min" mode="readwrite" name="clock_min" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_channels::clock_max" mode="readwrite" name="clock_max" type="double">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <configurationkind kindtype="configure"/>
-    </struct>
-    <configurationkind kindtype="configure"/>
-  </structsequence>
-  <structsequence id="device_motherboards" mode="readonly" name="device_motherboards">
-    <struct id="motherboards::usrp_motherboard" mode="readonly" name="usrp_motherboard">
-      <simple id="device_motherboards::mb_name" mode="readonly" name="mb_name" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <simple id="device_motherboards::mb_ip" mode="readonly" name="mb_ip" type="string">
-        <kind kindtype="configure"/>
-        <action type="external"/>
-      </simple>
-      <configurationkind kindtype="configure"/>
-    </struct>
-    <configurationkind kindtype="configure"/>
-  </structsequence>
-  <simple id="device_rx_mode" mode="readwrite" name="device_rx_mode" type="string">
-    <value>16bit</value>
-    <enumerations>
-      <enumeration label="16bit" value="16bit"/>
-      <enumeration label="8bit" value="8bit"/>
-    </enumerations>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
-  <simple id="device_tx_mode" mode="readwrite" name="device_tx_mode" type="string">
-    <value>16bit</value>
-    <enumerations>
-      <enumeration label="16bit" value="16bit"/>
-      <enumeration label="8bit" value="8bit"/>
-    </enumerations>
-    <kind kindtype="configure"/>
-    <action type="external"/>
-  </simple>
-  <struct id="target_device" mode="readwrite" name="target_device">
-    <description>Information used to specify a particular USRP device to target. All fields are optional. First device found that meets the specified criteria is selected.</description>
-    <simple id="target::type" name="type" type="string">
-      <value></value>
+  <struct id="FRONTEND::listener_allocation" name="frontend_listener_allocation">
+    <description>Allocates a listener (subscriber) based off a previous allocation </description>
+    <simple id="FRONTEND::listener_allocation::existing_allocation_id" name="existing_allocation_id" type="string">
+      <description></description>
     </simple>
-    <simple id="target::ip_address" name="ip_address" type="string">
-      <description>IP address of the USRP for network connected devices.</description>
-      <value></value>
+    <simple id="FRONTEND::listener_allocation::listener_allocation_id" name="listener_allocation_id" type="string">
+      <description></description>
     </simple>
-    <simple id="target::name" name="name" type="string">
-      <description>Name of the USRP device</description>
-      <value></value>
-    </simple>
-    <simple id="target::serial" name="serial" type="string">
-      <description>Serial number of the USRP device</description>
-      <value></value>
-    </simple>
-    <configurationkind kindtype="configure"/>
+    <configurationkind kindtype="allocation"/>
   </struct>
 </properties>

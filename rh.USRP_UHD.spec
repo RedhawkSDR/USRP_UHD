@@ -19,7 +19,7 @@
 #
 # By default, the RPM will install to the standard REDHAWK SDR root location (/var/redhawk/sdr)
 # You can override this at install time using --prefix /new/sdr/root when invoking rpm (preferred method, if you must)
-%{!?_sdrroot: %define _sdrroot /var/redhawk/sdr}
+%{!?_sdrroot: %global _sdrroot /var/redhawk/sdr}
 %define _prefix %{_sdrroot}
 Prefix:         %{_prefix}
 
@@ -42,13 +42,8 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:  redhawk-devel >= 2.0
 Requires:       redhawk >= 2.0
 
-%if "%{?rhel}" == "6"
 Requires:       libuuid-devel
 BuildRequires:  libuuid-devel
-%else
-Requires:       e2fsprogs-devel
-BuildRequires:  e2fsprogs-devel
-%endif
 
 # Interface requirements
 BuildRequires:  frontendInterfaces >= 2.2 bulkioInterfaces >= 2.0
@@ -93,7 +88,8 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,redhawk,redhawk,-)
-%dir %{_prefix}/dev/devices/rh/USRP_UHD
+%dir %{_sdrroot}/dev/devices/rh
+%dir %{_sdrroot}/dev/devices/rh/USRP_UHD
 %{_prefix}/dev/devices/rh/USRP_UHD/nodeconfig.py
 %{_prefix}/dev/devices/rh/USRP_UHD/nodeconfig.pyc
 %{_prefix}/dev/devices/rh/USRP_UHD/nodeconfig.pyo

@@ -2,14 +2,14 @@
  * This file is protected by Copyright. Please refer to the COPYRIGHT file
  * distributed with this source distribution.
  *
- * This file is part of REDHAWK USRP_UHD.
+ * This file is part of REDHAWK rh.USRP_UHD.
  *
- * REDHAWK USRP_UHD is free software: you can redistribute it and/or modify it
+ * REDHAWK rh.USRP_UHD is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
  * Free Software Foundation, either version 3 of the License, or (at your
  * option) any later version.
  *
- * REDHAWK USRP_UHD is distributed in the hope that it will be useful, but WITHOUT
+ * REDHAWK rh.USRP_UHD is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License
  * for more details.
@@ -71,6 +71,8 @@ USRP_UHD_base::~USRP_UHD_base()
     dataShort_out = 0;
     delete RFInfoTX_out;
     RFInfoTX_out = 0;
+    delete dataSDDS_out;
+    dataSDDS_out = 0;
 }
 
 void USRP_UHD_base::construct()
@@ -89,8 +91,10 @@ void USRP_UHD_base::construct()
     addPort("dataShort_out", dataShort_out);
     RFInfoTX_out = new frontend::OutRFInfoPort("RFInfoTX_out");
     addPort("RFInfoTX_out", RFInfoTX_out);
+    dataSDDS_out = new bulkio::OutSDDSPort("dataSDDS_out");
+    addPort("dataSDDS_out", dataSDDS_out);
 
-    this->addPropertyChangeListener("connectionTable", this, &USRP_UHD_base::connectionTableChanged);
+    this->addPropertyListener(connectionTable, this, &USRP_UHD_base::connectionTableChanged);
 
 }
 
@@ -127,20 +131,20 @@ void USRP_UHD_base::releaseObject() throw (CORBA::SystemException, CF::LifeCycle
 void USRP_UHD_base::connectionTableChanged(const std::vector<connection_descriptor_struct>* oldValue, const std::vector<connection_descriptor_struct>* newValue)
 {
     dataShort_out->updateConnectionFilter(*newValue);
+    dataSDDS_out->updateConnectionFilter(*newValue);
 }
 
 void USRP_UHD_base::loadProperties()
 {
     device_kind = "FRONTEND::TUNER";
     device_model = "USRP";
-    addProperty(update_available_devices,
-                false,
-                "update_available_devices",
-                "update_available_devices",
+    addProperty(device_group_id_global,
+                "device_group_id_global",
+                "device_group_id_global",
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(device_reference_source_global,
                 "INTERNAL",
@@ -149,7 +153,7 @@ void USRP_UHD_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(device_rx_gain_global,
                 0,
@@ -158,24 +162,7 @@ void USRP_UHD_base::loadProperties()
                 "readwrite",
                 "dB",
                 "external",
-                "configure");
-
-    addProperty(device_tx_gain_global,
-                0,
-                "device_tx_gain_global",
-                "device_tx_gain_global",
-                "readwrite",
-                "dB",
-                "external",
-                "configure");
-
-    addProperty(device_group_id_global,
-                "device_group_id_global",
-                "device_group_id_global",
-                "readwrite",
-                "",
-                "external",
-                "configure");
+                "property");
 
     addProperty(device_rx_mode,
                 "16bit",
@@ -184,7 +171,16 @@ void USRP_UHD_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
+
+    addProperty(device_tx_gain_global,
+                0,
+                "device_tx_gain_global",
+                "device_tx_gain_global",
+                "readwrite",
+                "dB",
+                "external",
+                "property");
 
     addProperty(device_tx_mode,
                 "16bit",
@@ -193,10 +189,26 @@ void USRP_UHD_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
-    frontend_listener_allocation = frontend::frontend_listener_allocation_struct();
-    frontend_tuner_allocation = frontend::frontend_tuner_allocation_struct();
+    addProperty(update_available_devices,
+                false,
+                "update_available_devices",
+                "update_available_devices",
+                "readwrite",
+                "",
+                "external",
+                "property");
+
+    addProperty(sdds_settings,
+                sdds_settings_struct(),
+                "sdds_settings",
+                "sdds_settings",
+                "readwrite",
+                "",
+                "external",
+                "property");
+
     addProperty(target_device,
                 target_device_struct(),
                 "target_device",
@@ -204,15 +216,17 @@ void USRP_UHD_base::loadProperties()
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
-    addProperty(connectionTable,
-                "connectionTable",
-                "",
+    frontend_tuner_allocation = frontend::frontend_tuner_allocation_struct();
+    frontend_listener_allocation = frontend::frontend_listener_allocation_struct();
+    addProperty(sdds_network_settings,
+                "sdds_network_settings",
+                "sdds_network_settings",
                 "readwrite",
                 "",
                 "external",
-                "configure");
+                "property");
 
     addProperty(available_devices,
                 "available_devices",
@@ -220,15 +234,7 @@ void USRP_UHD_base::loadProperties()
                 "readonly",
                 "",
                 "external",
-                "configure");
-
-    addProperty(device_channels,
-                "device_channels",
-                "device_channels",
-                "readonly",
-                "",
-                "external",
-                "configure");
+                "property");
 
     addProperty(device_motherboards,
                 "device_motherboards",
@@ -236,19 +242,47 @@ void USRP_UHD_base::loadProperties()
                 "readonly",
                 "",
                 "external",
-                "configure");
+                "property");
+
+    addProperty(device_channels,
+                "device_channels",
+                "device_channels",
+                "readonly",
+                "",
+                "external",
+                "property");
+
+    addProperty(connectionTable,
+                "connectionTable",
+                "",
+                "readwrite",
+                "",
+                "external",
+                "property");
 
 }
 
 /* This sets the number of entries in the frontend_tuner_status struct sequence property
- *  * as well as the tuner_allocation_ids vector. Call this function during initialization
- *   */
+ * as well as the tuner_allocation_ids vector. Call this function during initialization
+ */
 void USRP_UHD_base::setNumChannels(size_t num)
+{
+    this->setNumChannels(num, "RX_DIGITIZER");
+}
+/* This sets the number of entries in the frontend_tuner_status struct sequence property
+ * as well as the tuner_allocation_ids vector. Call this function during initialization
+ */
+
+void USRP_UHD_base::setNumChannels(size_t num, std::string tuner_type)
 {
     frontend_tuner_status.clear();
     frontend_tuner_status.resize(num);
     tuner_allocation_ids.clear();
     tuner_allocation_ids.resize(num);
+    for (std::vector<frontend_tuner_status_struct_struct>::iterator iter=frontend_tuner_status.begin(); iter!=frontend_tuner_status.end(); iter++) {
+        iter->enabled = false;
+        iter->tuner_type = tuner_type;
+    }
 }
 
 void USRP_UHD_base::frontendTunerStatusChanged(const std::vector<frontend_tuner_status_struct_struct>* oldValue, const std::vector<frontend_tuner_status_struct_struct>* newValue)
@@ -290,8 +324,8 @@ void USRP_UHD_base::assignListener(const std::string& listen_alloc_id, const std
             new_entries.push_back(tmp);
         }
     }
-    bool foundEntry = false;
     for (std::vector<connection_descriptor_struct>::iterator new_entry=new_entries.begin();new_entry!=new_entries.end();new_entry++) {
+        bool foundEntry = false;
         for (std::vector<connection_descriptor_struct>::iterator entry=connectionTable.begin();entry!=connectionTable.end();entry++) {
             if (entry == new_entry) {
                 foundEntry = true;
@@ -326,6 +360,14 @@ void USRP_UHD_base::removeListener(const std::string& listen_alloc_id)
         std::string connection_id = ossie::corba::returnString(tmp[i].connectionId);
         if (connection_id == listen_alloc_id) {
             this->dataShort_out->disconnectPort(connection_id.c_str());
+        }
+    }
+    // Check to see if port "dataSDDS_out" has a connection for this listener
+    tmp = this->dataSDDS_out->connections();
+    for (unsigned int i=0; i<this->dataSDDS_out->connections()->length(); i++) {
+        std::string connection_id = ossie::corba::returnString(tmp[i].connectionId);
+        if (connection_id == listen_alloc_id) {
+            this->dataSDDS_out->disconnectPort(connection_id.c_str());
         }
     }
     this->connectionTableChanged(&old_table, &this->connectionTable);
@@ -414,6 +456,10 @@ void USRP_UHD_base::matchAllocationIdToStreamId(const std::string allocation_id,
     connection_descriptor_struct tmp;
     tmp.connection_id = allocation_id;
     tmp.port_name = "dataShort_out";
+    tmp.stream_id = stream_id;
+    this->connectionTable.push_back(tmp);
+    tmp.connection_id = allocation_id;
+    tmp.port_name = "dataSDDS_out";
     tmp.stream_id = stream_id;
     this->connectionTable.push_back(tmp);
     this->connectionTableChanged(&old_table, &this->connectionTable);

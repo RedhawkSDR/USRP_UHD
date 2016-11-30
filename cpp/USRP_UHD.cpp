@@ -62,6 +62,14 @@ USRP_UHD_i::~USRP_UHD_i()
         if (usrp_tuners[tuner_id].lock.mutex != NULL)
             delete usrp_tuners[tuner_id].lock.mutex;
     }
+
+    // Clean up custom SDDS port
+    // USRP_UHD_base::~USRP_UHD_base() deletes USRP_UHD_base::dataSDDS_out,
+    // which points to the same object as USRP_UHD_i::dataSDDS_out. Can only
+    // delete once, so just let the base class take care of that for us.
+    //delete dataSDDS_out;
+    dataSDDS_out = 0;
+
 }
 
 
@@ -249,6 +257,7 @@ int USRP_UHD_i::serviceFunctionReceive(){
                 sri.mode = 1; // complex
                 //printSRI(&sri,"USRP_UHD_i::serviceFunctionReceive SRI"); // DEBUG
                 dataShort_out->pushSRI(sri);
+                dataSDDS_out->pushSRI(sri);
                 usrp_tuners[tuner_id].update_sri = false;
             }
 
@@ -257,7 +266,13 @@ int USRP_UHD_i::serviceFunctionReceive(){
             if(usrp_tuners[tuner_id].buffer_size < usrp_tuners[tuner_id].buffer_capacity){
                 usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_size);
             }
-            dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
+            // Only push on active ports
+            if(dataShort_out->isActive()){
+                dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
+            }
+            // Don't check isActive because could be relying on attach override rather than a connection
+            // It doesn't actually do anything if the tuner/stream isn't configured for sdds already anyway
+            dataSDDS_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
             // restore buffer size if necessary
             if(usrp_tuners[tuner_id].buffer_size < usrp_tuners[tuner_id].buffer_capacity){
                 usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_capacity);
@@ -294,8 +309,8 @@ void USRP_UHD_i::start() throw (CORBA::SystemException, CF::Resource::StartError
         {
             exclusive_lock lock(receive_service_thread_lock);
             if (receive_service_thread == NULL) {
-                dataShortTX_in->unblock();
-                dataFloatTX_in->unblock();
+                //dataShortTX_in->unblock();
+                //dataFloatTX_in->unblock();
                 receive_service_thread = new MultiProcessThread<USRP_UHD_i> (this, &USRP_UHD_i::serviceFunctionReceive, 0.001);
                 receive_service_thread->start();
             }
@@ -328,8 +343,9 @@ void USRP_UHD_i::stop() throw (CORBA::SystemException, CF::Resource::StopError) 
         exclusive_lock lock(receive_service_thread_lock);
         // release the child thread (if it exists)
         if (receive_service_thread != 0) {
-            dataShortTX_in->block();
-            dataShortTX_in->block();
+            //dataShortTX_in->block();
+            //dataShortTX_in->block();
+            //TODO - force EOS/disable for each allocated tuner? or
             if (!receive_service_thread->release(2)) {
                 throw CF::Resource::StopError(CF::CF_NOTSET,"Receive processing thread did not die");
             }
@@ -362,11 +378,20 @@ void USRP_UHD_i::stop() throw (CORBA::SystemException, CF::Resource::StopError) 
     }
 }
 
-void USRP_UHD_i::construct()
-{
+
+/***********************************************************************************
+ this function is invoked in the constructor
+***********************************************************************************/
+void USRP_UHD_i::construct() {
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
     receive_service_thread = NULL;
     transmit_service_thread = NULL;
+
+    // Set up custom SDDS port
+    dataSDDS_out = new OutSDDSPort_customized<short>("dataSDDS_out");
+    addPort("dataSDDS_out", dataSDDS_out);
+    delete USRP_UHD_base::dataSDDS_out;
+    USRP_UHD_base::dataSDDS_out = USRP_UHD_i::dataSDDS_out;
 
     // set some default values that should get overwritten by correct values
     device_rx_gain_global = 0.0;
@@ -384,28 +409,46 @@ void USRP_UHD_i::construct()
     tx_rfinfo_pkt.rf_center_freq = 50e9; // 50 GHz
     tx_rfinfo_pkt.rf_bandwidth = 100e9; // 100 GHz, makes range 0 Hz to 100 GHz
     tx_rfinfo_pkt.if_center_freq = 0; // 0 Hz, no up/down converter
+}
 
-    //USRP_UHD_base::construct();
-    /***********************************************************************************
-     this function is invoked in the constructor
-    ***********************************************************************************/
+void USRP_UHD_i::constructor() {
 
-    addPropertyChangeListener("target_device", this, &USRP_UHD_i::targetDeviceChanged);
-    addPropertyChangeListener("device_rx_gain_global", this, &USRP_UHD_i::deviceRxGainChanged);
-    addPropertyChangeListener("device_tx_gain_global", this, &USRP_UHD_i::deviceTxGainChanged);
-    addPropertyChangeListener("device_group_id_global", this, &USRP_UHD_i::deviceGroupIdChanged);
-    addPropertyChangeListener("update_available_devices", this, &USRP_UHD_i::updateAvailableDevicesChanged);
-    addPropertyChangeListener("device_reference_source_global", this, &USRP_UHD_i::deviceReferenceSourceChanged);
+    addPropertyListener(target_device, this, &USRP_UHD_i::targetDeviceChanged);
+    addPropertyListener(device_rx_gain_global, this, &USRP_UHD_i::deviceRxGainChanged);
+    addPropertyListener(device_tx_gain_global, this, &USRP_UHD_i::deviceTxGainChanged);
+    addPropertyListener(device_group_id_global, this, &USRP_UHD_i::deviceGroupIdChanged);
+    addPropertyListener(update_available_devices, this, &USRP_UHD_i::updateAvailableDevicesChanged);
+    addPropertyListener(device_reference_source_global, this, &USRP_UHD_i::deviceReferenceSourceChanged);
+
+    try{
+        initUsrp();
+    }catch(...){
+        LOG_WARN(USRP_UHD_i,"CAUGHT EXCEPTION WHEN INITIALIZING USRP. WAITING 1 SECOND AND TRYING AGAIN");
+        sleep(1);
+        try {
+            initUsrp();
+        } catch(...) {
+            update_available_devices = false;
+            updateAvailableDevices();
+            LOG_INFO(USRP_UHD_i,"Could not init USRP with current target_device configuration. Try configuring with one of the available_devices entries.");
+        }
+    }
 
     if(update_available_devices){
         update_available_devices = false;
         updateAvailableDevices();
     }
+    updateDeviceRxGain(device_rx_gain_global);
+    updateDeviceTxGain(device_tx_gain_global);
+    updateGroupId(device_group_id_global);
+    updateDeviceReferenceSource(device_reference_source_global);
 
     /** As of the REDHAWK 1.8.3 release, device are not started automatically by the node. Therefore
      *  the device must start itself. */
     start();
+
 }
+
 /*************************************************************
 Functions supporting tuning allocation
 *************************************************************/
@@ -445,6 +488,13 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
     or not tuners are available
     ************************************************************/
 
+    // SDDS params
+    std::string sdds_ip = "";
+    std::string sdds_iface = "";
+    int32_t sdds_port = 29495;
+    uint16_t sdds_vlan = 0;
+    sdds_settings_struct tmp_sdds_settings;
+
     double if_offset = 0.0;
     double opt_sr = 0.0;
     double opt_bw = 0.0;
@@ -474,6 +524,22 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             opt_sr = optimizeRate(request.sample_rate, tuner_id);
             opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
             LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|opt_sr="<<opt_sr<<"  opt_bw="<<opt_bw)
+
+            // cache SDDS-related props for use at end of function
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "Cache sdds_network_settings prop for tuner_id=" << tuner_id);
+            if (sdds_network_settings.size() > tuner_id && !sdds_network_settings[tuner_id].ip_address.empty()) {
+                LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "sdds_network_settings has ip address for tuner_id=" << tuner_id);
+                // use sdds_network_settings[tuner_id]
+                sdds_ip = sdds_network_settings[tuner_id].ip_address;
+                sdds_iface = sdds_network_settings[tuner_id].interface;
+                sdds_port = sdds_network_settings[tuner_id].port;
+                sdds_vlan = sdds_network_settings[tuner_id].vlan;
+                tmp_sdds_settings = sdds_settings;
+            } // else leave SDDS disabled for this RX_DIG
+            else {
+                LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "sdds_network_settings does NOT have ip address for tuner_id=" << tuner_id);
+            }
+
         } // end scope for prop_lock
 
         scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
@@ -503,8 +569,39 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
         // creates a stream id if not already created for this tuner
         std::string stream_id = getStreamId(tuner_id);
 
+        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "Set up SDDS output for tuner_id=" << tuner_id);
+
+        // setup sdds output
+        if (!sdds_ip.empty()) {
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "Setting up ip="<<sdds_ip<<" for tuner_id=" << tuner_id);
+            if (dataSDDS_out->setStream(stream_id, sdds_iface, sdds_ip, sdds_port, sdds_vlan,
+                    tmp_sdds_settings.attach_user_id, tmp_sdds_settings.ttv_override,
+                    tmp_sdds_settings.sdds_endian_representation, tmp_sdds_settings.downstream_give_sri_priority,
+                    usrp_tuners[tuner_id].buffer_capacity, tmp_sdds_settings.buffer_size)) {
+                LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "Configured SDDS with stream, now start it... tuner_id=" << tuner_id);
+                dataSDDS_out->startStream(stream_id);
+                LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "Started SDDS stream for tuner_id=" << tuner_id);
+                fts.output_multicast = sdds_ip;
+                fts.output_port = sdds_port;
+                fts.output_vlan = sdds_vlan;
+            } else {
+                // TODO FAIL! what is appropriate exception to throw?
+                LOG_ERROR(USRP_UHD_i,__PRETTY_FUNCTION__ << "Failed to set up SDDS output with ip="<<sdds_ip<<" for tuner_id=" << tuner_id);
+                throw FRONTEND::FrontendException("Failed to setup SDDS output!");
+            }
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "DONE Setting up ip="<<sdds_ip<<" for tuner_id=" << tuner_id);
+        } else {
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "SDDS output disabled (no ip configured) for tuner_id=" << tuner_id);
+        }
+
         // enable multi-out capability for this stream/allocation/connection
         matchAllocationIdToStreamId(request.allocation_id, stream_id, "dataShort_out");
+        LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "Updated dataShort_out connection table with streamID: "<<stream_id<<" for tuner_id=" << tuner_id);
+
+        if (!sdds_ip.empty()) {
+            matchAllocationIdToStreamId(request.allocation_id, stream_id, "dataSDDS_out");
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "Updated dataSDDS_out connection table with streamID: "<<stream_id<<" for tuner_id=" << tuner_id);
+        }
 
         usrp_tuners[tuner_id].update_sri = true;
 
@@ -583,6 +680,7 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
     //printSRI(&sri,"USRP_UHD_i::deviceDeleteTuning SRI"); // DEBUG
     updateSriTimes(&sri, usrp_tuners[tuner_id].time_up.twsec, usrp_tuners[tuner_id].time_down.twsec, frontend::J1970);
     dataShort_out->pushSRI(sri);
+    dataSDDS_out->pushSRI(sri);
     usrp_tuners[tuner_id].update_sri = false;
 
     usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_size);
@@ -590,7 +688,16 @@ bool USRP_UHD_i::deviceDeleteTuning(frontend_tuner_status_struct_struct &fts, si
                                          << "  buffer_size=" << usrp_tuners[tuner_id].buffer_size
                                          << "  buffer_capacity=" << usrp_tuners[tuner_id].buffer_capacity
                                          << "  output_buffer.size()=" << usrp_tuners[tuner_id].output_buffer.size() );
-    dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, true, stream_id);
+    // Only push on active ports
+    if(dataShort_out->isActive()){
+        dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, true, stream_id);
+    }
+
+    // Don't check isActive because could be relying on attach override rather than a connection
+    // It doesn't actually do anything if the tuner/stream isn't configured for sdds already anyway
+    dataSDDS_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, true, stream_id);
+    //dataSDDS_out->removeStream(stream_id); // Don't do this b/c it'll prevent that data/sri just pushed from being sent.
+
     usrp_tuners[tuner_id].buffer_size = 0;
     usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_capacity);
 
@@ -704,25 +811,47 @@ void USRP_UHD_i::setNumChannels(size_t num_rx, size_t num_tx){
     usrp_rx_streamers.resize(num_rx);
     usrp_tx_streamers.resize(num_tx);
     usrp_tx_streamer_typesize.resize(num_tx);
+
+    // For a single entry, add entries for each RX based on single entry, while incrementing IP address
+    if (sdds_network_settings.size()==1 && num_rx > 1 && !sdds_network_settings[0].ip_address.empty()) {
+        struct in_addr starting_addr = { 0x00000000 };
+        if( inet_aton(sdds_network_settings[0].ip_address.c_str(), &starting_addr) == 0 ) {
+            // Invalid IP address, disable SDDS
+            sdds_network_settings[0].ip_address.clear();
+        } else {
+            starting_addr.s_addr = ntohl( starting_addr.s_addr );
+            if( starting_addr.s_addr ) {
+                sdds_network_settings.resize(num_rx);
+                for (size_t ii=1; ii<num_rx; ii++) {
+                    struct in_addr tmp = { htonl(starting_addr.s_addr + ii) };
+                    std::string ip_addr_str( inet_ntoa( tmp ));
+                    sdds_network_settings[ii].ip_address = ip_addr_str;
+                    sdds_network_settings[ii].interface = sdds_network_settings[0].interface;
+                    sdds_network_settings[ii].port = sdds_network_settings[0].port;
+                    sdds_network_settings[ii].vlan = sdds_network_settings[0].vlan;
+                }
+            }
+        }
+    }
 }
 
 ///////////////////////////////
 //   CONFIGURE CALLBACKS     //
 ///////////////////////////////
 
-void USRP_UHD_i::updateAvailableDevicesChanged(const bool* old_value, const bool* new_value){
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
+void USRP_UHD_i::updateAvailableDevicesChanged(bool old_value, bool new_value){
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << old_value << "  new_value=" << new_value);
     LOG_DEBUG(USRP_UHD_i,"updateAvailableDevicesChanged|update_available_devices=" << update_available_devices);
 
     exclusive_lock lock(prop_lock);
 
-    if (update_available_devices){
+    if (new_value){
         updateAvailableDevices();
     }
     update_available_devices = false;
 }
 
-void USRP_UHD_i::targetDeviceChanged(const target_device_struct* old_value, const target_device_struct* new_value){
+void USRP_UHD_i::targetDeviceChanged(const target_device_struct& old_value, const target_device_struct& new_value){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
     LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|target_device.type=" << target_device.type);
     LOG_DEBUG(USRP_UHD_i,"targetDeviceChanged|target_device.name=" << target_device.name);
@@ -756,31 +885,31 @@ void USRP_UHD_i::targetDeviceChanged(const target_device_struct* old_value, cons
     }
 
 }
-void USRP_UHD_i::deviceRxGainChanged(const float* old_value, const float* new_value){
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
+void USRP_UHD_i::deviceRxGainChanged(float old_value, float new_value){
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << old_value << "  new_value=" << new_value);
     LOG_DEBUG(USRP_UHD_i,"deviceRxGainChanged|device_gain_global=" << device_rx_gain_global);
 
-    updateDeviceRxGain(*new_value);
+    updateDeviceRxGain(new_value);
 }
-void USRP_UHD_i::deviceTxGainChanged(const float* old_value, const float* new_value){
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
+void USRP_UHD_i::deviceTxGainChanged(float old_value, float new_value){
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << old_value << "  new_value=" << new_value);
     LOG_DEBUG(USRP_UHD_i,"deviceTxGainChanged|device_gain_global=" << device_tx_gain_global);
 
-    updateDeviceTxGain(*new_value);
+    updateDeviceTxGain(new_value);
 }
 
-void USRP_UHD_i::deviceReferenceSourceChanged(const std::string* old_value, const std::string* new_value){
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
+void USRP_UHD_i::deviceReferenceSourceChanged(std::string old_value, std::string new_value){
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << old_value << "  new_value=" << new_value);
     LOG_DEBUG(USRP_UHD_i,"deviceReferenceSourceChanged|device_reference_source_global=" << device_reference_source_global);
 
-    updateDeviceReferenceSource(*new_value);
+    updateDeviceReferenceSource(new_value);
 }
 
-void USRP_UHD_i::deviceGroupIdChanged(const std::string* old_value, const std::string* new_value){
-    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << *old_value << "  new_value=" << *new_value);
+void USRP_UHD_i::deviceGroupIdChanged(std::string old_value, std::string new_value){
+    LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << "old_value=" << old_value << "  new_value=" << new_value);
     LOG_DEBUG(USRP_UHD_i,"deviceGroupIdChanged|device_group_id_global=" << device_group_id_global);
 
-    updateGroupId(*new_value);
+    updateGroupId(new_value);
 }
 
 // clear bookkeeping when not associated with a H/W device
@@ -1021,7 +1150,6 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
         updateDeviceInfo();
 
         // Initialize tasking and status vectors
-        //setNumChannels(device_channels.size());
         size_t num_rx_channels = usrp_device_ptr->get_rx_num_channels();
         size_t num_tx_channels = usrp_device_ptr->get_tx_num_channels();
         setNumChannels(num_rx_channels,num_tx_channels);
@@ -1080,6 +1208,12 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
             else
                 sprintf(tmp,"%.2f",device_channels[tuner_id].bandwidth_min);
             frontend_tuner_status[tuner_id].available_bandwidth = std::string(tmp);
+
+            // init SDDS-related fields
+            frontend_tuner_status[tuner_id].output_multicast = "";
+            frontend_tuner_status[tuner_id].output_port = 0;
+            frontend_tuner_status[tuner_id].output_vlan = 0;
+            frontend_tuner_status[tuner_id].output_format = "CI"; // complex int
         }
 
         // update device channels with global settings
@@ -1397,11 +1531,14 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
         std::string stream_id = getStreamId(tuner_id);
 
         if(!prev_enabled){
+            LOG_DEBUG(USRP_UHD_i,"USRP_UHD_i::usrpEnable|setting update_sri flag for tuner: "<<tuner_id<<" with stream id: "<< stream_id);
+
             LOG_DEBUG(USRP_UHD_i,"USRP_UHD_i::usrpEnable|creating SRI for tuner: "<<tuner_id<<" with stream id: "<< stream_id);
             BULKIO::StreamSRI sri = create(stream_id, frontend_tuner_status[tuner_id]);
             sri.mode = 1; // complex
             //printSRI(&sri,"USRP_UHD_i::usrpEnable SRI"); // DEBUG
             dataShort_out->pushSRI(sri);
+            dataSDDS_out->pushSRI(sri);
             usrp_tuners[tuner_id].update_sri = false;
         }
 
@@ -1446,7 +1583,13 @@ bool USRP_UHD_i::usrpDisable(size_t tuner_id){
                                                  << "  buffer_size=" << usrp_tuners[tuner_id].buffer_size
                                                  << "  buffer_capacity=" << usrp_tuners[tuner_id].buffer_capacity
                                                  << "  output_buffer.size()=" << usrp_tuners[tuner_id].output_buffer.size() );
-            dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
+            // Only push on active ports
+            if(dataShort_out->isActive()){
+                dataShort_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
+            }
+            if(dataSDDS_out->isActive()){
+                dataSDDS_out->pushPacket(usrp_tuners[tuner_id].output_buffer, usrp_tuners[tuner_id].output_buffer_time, false, stream_id);
+            }
             usrp_tuners[tuner_id].buffer_size = 0;
             usrp_tuners[tuner_id].output_buffer.resize(usrp_tuners[tuner_id].buffer_capacity);
         }

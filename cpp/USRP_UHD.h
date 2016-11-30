@@ -21,6 +21,7 @@
 #define USRP_UHD_IMPL_H
 
 #include "USRP_UHD_base.h"
+#include "port_impl_customized.h"
 
 #include <uhd/usrp/multi_usrp.hpp>
 
@@ -144,8 +145,10 @@ struct usrpTunerStruct {
         // fyi: the bulkio pushPacket call does this same calculation as of 1.10,
         //      so we'll only require a single pushPacket call per buffer
         // Also, since data is complex, ensure number of samples is even
+        // Since SDDS output was added, we're making the buffer a multiple of 1024,
+        // which also satsifies the "even" requirement for complex samples.
         const size_t max_payload_size    = (size_t) (bulkio::Const::MaxTransferBytes() * .9);
-        const size_t max_samples_per_push = size_t((max_payload_size/sizeof(output_buffer[0]))/2)*2;
+        const size_t max_samples_per_push = size_t((max_payload_size/sizeof(output_buffer[0]))/1024)*1024;
 
         buffer_capacity = max_samples_per_push;
         output_buffer.resize( buffer_capacity );
@@ -198,6 +201,7 @@ class USRP_UHD_i : public USRP_UHD_base
         USRP_UHD_i(char *devMgr_ior, char *id, char *lbl, char *sftwrPrfl, CF::Properties capacities);
         USRP_UHD_i(char *devMgr_ior, char *id, char *lbl, char *sftwrPrfl, CF::Properties capacities, char *compDev);
         ~USRP_UHD_i();
+        void constructor();
         int serviceFunction(){return FINISH;} // unused
         int serviceFunctionReceive();
         int serviceFunctionTransmit();
@@ -228,6 +232,9 @@ class USRP_UHD_i : public USRP_UHD_base
         void setTunerOutputSampleRate(const std::string& allocation_id, double sr);
 
     private:
+        // Custom SDDS port
+        OutSDDSPort_customized<short>  *dataSDDS_out;
+
         ////////////////////////////////////////
         // Required device specific functions // -- to be implemented by device developer
         ////////////////////////////////////////
@@ -270,12 +277,12 @@ class USRP_UHD_i : public USRP_UHD_base
         void setNumChannels(size_t num_rx, size_t num_tx);
 
         // configure callbacks
-        void updateAvailableDevicesChanged(const bool* old_value, const bool* new_value);
-        void targetDeviceChanged(const target_device_struct* old_value, const target_device_struct* new_value);
-        void deviceRxGainChanged(const float* old_value, const float* new_value);
-        void deviceTxGainChanged(const float* old_value, const float* new_value);
-        void deviceReferenceSourceChanged(const std::string* old_value, const std::string* new_value);
-        void deviceGroupIdChanged(const std::string* old_value, const std::string* new_value);
+        void updateAvailableDevicesChanged(bool old_value, bool new_value);
+        void targetDeviceChanged(const target_device_struct& old_value, const target_device_struct& new_value);
+        void deviceRxGainChanged(float old_value, float new_value);
+        void deviceTxGainChanged(float old_value, float new_value);
+        void deviceReferenceSourceChanged(std::string old_value, std::string new_value);
+        void deviceGroupIdChanged(std::string old_value, std::string new_value);
 
         // additional bookkeeping for each channel
         std::vector<usrpRangesStruct> usrp_ranges; // freq/bw/sr/gain ranges supported by each tuner channel
@@ -318,6 +325,7 @@ class USRP_UHD_i : public USRP_UHD_base
 
     protected:
         void construct();
+
 };
 
 #endif // USRP_UHD_IMPL_H

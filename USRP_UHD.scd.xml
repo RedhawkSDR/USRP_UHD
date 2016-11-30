@@ -3,14 +3,14 @@
 This file is protected by Copyright. Please refer to the COPYRIGHT file
 distributed with this source distribution.
 
-This file is part of REDHAWK USRP_UHD.
+This file is part of REDHAWK rh.USRP_UHD.
 
-REDHAWK USRP_UHD is free software: you can redistribute it and/or modify it under
+REDHAWK rh.USRP_UHD is free software: you can redistribute it and/or modify it under
 the terms of the GNU Lesser General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option) any
 later version.
 
-REDHAWK USRP_UHD is distributed in the hope that it will be useful, but WITHOUT ANY
+REDHAWK rh.USRP_UHD is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
 details.
@@ -49,6 +49,9 @@ with this program.  If not, see http://www.gnu.org/licenses/.
       <provides repid="IDL:BULKIO/dataFloat:1.0" providesname="dataFloatTX_in">
         <porttype type="data"/>
       </provides>
+      <uses repid="IDL:BULKIO/dataSDDS:1.0" usesname="dataSDDS_out">
+        <porttype type="data"/>
+      </uses>
     </ports>
   </componentfeatures>
   <interfaces>
@@ -82,6 +85,9 @@ with this program.  If not, see http://www.gnu.org/licenses/.
     <interface name="dataFloat" repid="IDL:BULKIO/dataFloat:1.0">
       <inheritsinterface repid="IDL:BULKIO/ProvidesPortStatisticsProvider:1.0"/>
       <inheritsinterface repid="IDL:BULKIO/updateSRI:1.0"/>
+    </interface>
+    <interface name="dataSDDS" repid="IDL:BULKIO/dataSDDS:1.0">
+      <inheritsinterface repid="IDL:BULKIO/ProvidesPortStatisticsProvider:1.0"/>
     </interface>
   </interfaces>
 </softwarecomponent>
