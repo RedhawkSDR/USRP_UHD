@@ -301,7 +301,9 @@ int USRP_UHD_i::serviceFunctionTransmit(){
 
 void USRP_UHD_i::start() throw (CORBA::SystemException, CF::Resource::StartError) {
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
-    //USRP_UHD_base::start();
+    USRP_UHD_base::start();
+    dataShortTX_in->unblock();
+    dataFloatTX_in->unblock();
 
     // Create threads
     try {
@@ -318,8 +320,8 @@ void USRP_UHD_i::start() throw (CORBA::SystemException, CF::Resource::StartError
         {
             exclusive_lock lock(transmit_service_thread_lock);
             if (transmit_service_thread == NULL) {
-                dataShortTX_in->unblock();
-                dataFloatTX_in->unblock();
+                //dataShortTX_in->unblock();
+                //dataFloatTX_in->unblock();
                 transmit_service_thread = new MultiProcessThread<USRP_UHD_i> (this, &USRP_UHD_i::serviceFunctionTransmit, 0.001);
                 transmit_service_thread->start();
             }
@@ -330,14 +332,15 @@ void USRP_UHD_i::start() throw (CORBA::SystemException, CF::Resource::StartError
         throw;
     }
 
-    if (!Resource_impl::started()) {
+    /*if (!Resource_impl::started()) {
         Resource_impl::start();
-    }
+    }*/
 }
 
 void USRP_UHD_i::stop() throw (CORBA::SystemException, CF::Resource::StopError) {
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
-    //USRP_UHD_base::stop();
+    dataShortTX_in->block();
+    dataShortTX_in->block();
 
     {
         exclusive_lock lock(receive_service_thread_lock);
@@ -358,8 +361,8 @@ void USRP_UHD_i::stop() throw (CORBA::SystemException, CF::Resource::StopError) 
         exclusive_lock lock(transmit_service_thread_lock);
         // release the child thread (if it exists)
         if (transmit_service_thread != 0) {
-            dataShortTX_in->block();
-            dataShortTX_in->block();
+            //dataShortTX_in->block();
+            //dataShortTX_in->block();
             if (!transmit_service_thread->release(2)) {
                 throw CF::Resource::StopError(CF::CF_NOTSET,"Transmit processing thread did not die");
             }
@@ -373,9 +376,10 @@ void USRP_UHD_i::stop() throw (CORBA::SystemException, CF::Resource::StopError) 
         deviceDisable(tuner_id);
     }
 
-    if (Resource_impl::started()) {
-        Resource_impl::stop();
-    }
+    /*if (started()) {
+        USRP_UHD_base::stop();
+    }*/
+    USRP_UHD_base::stop();
 }
 
 
