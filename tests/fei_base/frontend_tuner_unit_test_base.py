@@ -38,6 +38,7 @@ from ossie.utils import uuid
 from redhawk.frontendInterfaces import FRONTEND, FRONTEND__POA, TunerControl_idl
 from bulkio.bulkioInterfaces import BULKIO, BULKIO__POA
 from ossie.utils.bulkio import bulkio_data_helpers
+from ossie.utils.sb.io_helpers import DataSinkSDDS
 
 DEBUG_LEVEL = 0
 def set_debug_level(lvl=0):
@@ -2152,15 +2153,17 @@ class FrontendTunerTests(unittest.TestCase):
         for port in sorted(self.scd.get_componentfeatures().get_ports().get_uses(),reverse=True):
             comp_port_type = port.get_repid().split(':')[1].split('/')[-1]
             comp_port_name = port.get_usesname()
-            if comp_port_type not in self.port_map:
+            if comp_port_type in self.port_map:
+                self._testBULKIO(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
+            elif comp_port_type == "dataSDDS":
+                self._testSDDS(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
+            else:
                 print 'WARNING - skipping %s port named %s, not supported BULKIO port type'%(comp_port_type,comp_port_name)
                 continue
-            self._testBULKIO(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
-            
+
     def _testBULKIO(self,tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1=None,listener2=None):
         if comp_port_type == 'dataSDDS':
-            print 'WARNING - dataSDDS output port testing not supported'
-            return
+            return self._testSDDS(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
         print 'Testing data flow on port:',comp_port_type,comp_port_name
         pp(controller)
         comp_port_obj = self.dut.getPort(str(comp_port_name))
@@ -2199,66 +2202,11 @@ class FrontendTunerTests(unittest.TestCase):
         except FRONTEND.NotSupportedException, e:
             status = self._getTunerStatusProp(controller['ALLOC_ID'])
         pp(status)
-        if ttype=='DDC':
-            # get tuner status of parent CHAN/RDC... may be ambiguous
-            chan_props = {'FRONTEND::tuner_status::group_id':status['FRONTEND::tuner_status::group_id'],
-                          'FRONTEND::tuner_status::rf_flow_id':status['FRONTEND::tuner_status::rf_flow_id']}
-            ddc_props = {'FRONTEND::tuner_status::tuner_type':'DDC'}
-            try:
-                chan_status = self._findTunerStatusProps(match=chan_props,notmatch=ddc_props)
-            except KeyError:
-                chan_status = None
-            else:
-                if len(chan_status) != 1:
-                    # ambiguous or no match found, can't be sure we're checking correct COL_RF
-                    chan_status = None
-                else:
-                    chan_status = chan_status[0]
         
+        #verify SRI
         sri1 = dataSink1.sri()
-        print 'sri1',sri1
-        self.checkAlmostEqual(status['FRONTEND::tuner_status::sample_rate'], 1.0/sri1.xdelta, '%s: SRI xdelta has correct value'%(comp_port_name),places=0)
-        self.check(status['FRONTEND::tuner_status::complex'],sri1.mode,'%s: SRI mode has correct value'%(comp_port_name))
-        
-        # verify SRI keywords
-        keywords = properties.props_to_dict(sri1.keywords)
-        if 'COL_RF' in keywords:
-            self.check(True,True,'%s: SRI has COL_RF keyword'%(comp_port_name))
-            if ttype == 'DDC':
-                if chan_status != None:
-                    self.checkAlmostEqual(chan_status['FRONTEND::tuner_status::center_frequency'],keywords['COL_RF'],'%s: SRI keyword COL_RF has correct value'%(comp_port_name),places=0)
-                else:
-                    print 'WARNING - could not determine center frequency of collector to compare with COL_RF keyword'
-            else:
-                self.checkAlmostEqual(status['FRONTEND::tuner_status::center_frequency'],keywords['COL_RF'],'%s: SRI keyword COL_RF has correct value'%(comp_port_name),places=0)
-        else:
-            self.check(False,True,'%s: SRI has COL_RF keyword'%(comp_port_name))
-            
-        if 'CHAN_RF' in keywords:
-            self.check(True,True,'%s: SRI has CHAN_RF keyword'%(comp_port_name))
-            self.checkAlmostEqual(status['FRONTEND::tuner_status::center_frequency'],keywords['CHAN_RF'],'%s: SRI keyword CHAN_RF has correct value'%(comp_port_name),places=0)
-        else:
-            self.check(False,True,'%s: SRI has CHAN_RF keyword'%(comp_port_name))
-            
-        if 'FRONTEND::BANDWIDTH' in keywords:
-            self.check(True,True,'%s: SRI has FRONTEND::BANDWIDTH keyword'%(comp_port_name))
-            if not self.checkAlmostEqual(status['FRONTEND::tuner_status::bandwidth'],keywords['FRONTEND::BANDWIDTH'],'%s: SRI keyword FRONTEND::BANDWIDTH has correct value'%(comp_port_name),places=0):
-                self.checkAlmostEqual(status['FRONTEND::tuner_status::sample_rate'],keywords['FRONTEND::BANDWIDTH'],'%s: SRI keyword FRONTEND::BANDWIDTH has sample rate value'%(comp_port_name),places=0, silentFailure=True, successMsg='WARN')
-        else:
-            self.check(False,True,'%s: SRI has FRONTEND::BANDWIDTH keyword'%(comp_port_name))
-            
-        if 'FRONTEND::RF_FLOW_ID' in keywords:
-            self.check(True,True,'%s: SRI has FRONTEND::RF_FLOW_ID keyword'%(comp_port_name))
-            self.check(status['FRONTEND::tuner_status::rf_flow_id'],keywords['FRONTEND::RF_FLOW_ID'],'%s: SRI keyword FRONTEND::RF_FLOW_ID has correct value'%(comp_port_name))
-        else:
-            self.check(False,True,'%s: SRI has FRONTEND::RF_FLOW_ID keyword'%(comp_port_name))
-            
-        if 'FRONTEND::DEVICE_ID' in keywords:
-            self.check(True,True,'%s: SRI has FRONTEND::DEVICE_ID keyword'%(comp_port_name))
-            #self.check(1,keywords['FRONTEND::DEVICE_ID'],'SRI keyword FRONTEND::DEVICE_ID has correct value')
-        else:
-            self.check(False,True,'%s: SRI has FRONTEND::DEVICE_ID keyword'%(comp_port_name))
-    
+        self._verifySRI (sri1,status,comp_port_name)  
+     
         # verify multi-out port
         bad_conn_id = "bad:"+str(uuid.uuid4())
         comp_port_obj.connectPort(dataSink2_port_obj, bad_conn_id)
@@ -2326,7 +2274,160 @@ class FrontendTunerTests(unittest.TestCase):
         # cleanup controller
         comp_port_obj.disconnectPort(controller['ALLOC_ID'])
         comp_port_obj.disconnectPort(bad_conn_id)
+    
+    def _testSDDS(self,tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1=None,listener2=None):
+        print 'Testing SDDS port Behavior'
+        comp_port_obj = self.dut.getPort(str(comp_port_name))
+        dataSink1 = sb.DataSinkSDDS()
+        dataSink2 = sb.DataSinkSDDS()
+        dataSink1_port_obj = dataSink1.getPort("dataSDDSIn")
+        dataSink2_port_obj = dataSink2.getPort("dataSDDSIn")
         
+        # alloc a tuner
+        controller['ALLOC_ID'] = "control:"+str(uuid.uuid4()) # unique for each loop
+        tAlloc = self._generateAlloc(controller)
+        comp_port_obj.connectPort(dataSink1_port_obj, controller['ALLOC_ID'])
+        self.dut_ref.allocateCapacity(tAlloc)
+
+        time.sleep(0.1)
+        
+        sri1 = dataSink1._sink.sri
+        if not sri1:
+            self.check(False, True, "%s: No SRI pushed after connection and Allocation. Cannot continue Test"%(comp_port_name))
+            return
+        
+        attachments1 = dataSink1._sink.attachments
+        if not attachments1:
+            self.check(False, True, "%s: No Attach Sent after connection and Allocation. Cannot continue Test"%(comp_port_name))
+            return
+        try:
+            status = properties.props_to_dict(tuner_control.getTunerStatus(controller['ALLOC_ID']))
+        except FRONTEND.NotSupportedException, e:
+            status = self._getTunerStatusProp(controller['ALLOC_ID'])
+        
+        #verify SRI
+        self._verifySRI (sri1,status,comp_port_name)       
+
+        #verify Attachment
+        self._verifyAttach(attachments1,status,comp_port_name)
+
+        # verify multi-out port
+        bad_conn_id = "bad:"+str(uuid.uuid4())
+        comp_port_obj.connectPort(dataSink2_port_obj, bad_conn_id)
+        for attempt in xrange(5):
+            time.sleep(1.0)
+            attachments2 = dataSink2._sink.attachments
+            sri2 = dataSink2._sink.sri
+            if sri2 or attachments2:
+                break
+        self.check(not(sri2),True,'%s: Did not receive sri from tuner allocation with wrong alloc_id (multiport test)'%(comp_port_name))
+        self.check(not(attachments2),True,'%s: Did not receive attach from tuner allocation with wrong alloc_id (multiport test)'%(comp_port_name))
+        
+        comp_port_obj.disconnectPort(bad_conn_id)
+        
+        # verify listener
+        listener1 = self._generateListener(controller) # unique for each loop
+        listener1['LISTENER_ID'] = "listener1:"+listener1['LISTENER_ID']
+        listenerAlloc1 = self._generateListenerAlloc(listener1)
+        comp_port_obj.connectPort(dataSink2_port_obj, listener1['LISTENER_ID'])
+        self.dut_ref.allocateCapacity(listenerAlloc1)
+        
+        time.sleep(0.1)
+        
+        sri2 = dataSink2._sink.sri
+        if not sri2:
+            self.check(False, True, "%s: No SRI pushed after connection and Listener Allocation. Cannot continue Test"%(comp_port_name))
+            return
+        
+        attachments2 = dataSink2._sink.attachments
+        if not attachments2:
+            self.check(False, True, "%s: No Attach Sent after connection and Listener Allocation. Cannot continue Test"%(comp_port_name))
+            return
+
+        self.check(sri1.streamID==sri2.streamID,True,'%s: Received correct SRI from listener allocation'%(comp_port_name))
+        self._compareAttach(attachments1,attachments2,comp_port_name)
+
+        self.dut_ref.deallocateCapacity(listenerAlloc1)
+        time.sleep(1)
+        
+        attachments2 = dataSink2._sink.attachments
+        self.check(not(attachments2), True,'%s: Detach Listener on deallocation of listener'%(comp_port_name))
+
+        self.dut_ref.deallocateCapacity(tAlloc)
+        time.sleep(1)
+        
+        attachments1 = dataSink1._sink.attachments
+        self.check(not(attachments1), True,'%s: Detach Data on deallocation'%(comp_port_name))
+
+    def _compareAttach(self,attachments1,attachments2,comp_port_name=""):
+        attachmentIDs1 = attachments1.keys()
+        self.check(1,len(attachmentIDs1), "%s: Received Correct Number of Attachments on Listener"%(comp_port_name))
+        attachmentID1 = attachmentIDs1[0]
+        sddsStreamDef1 = attachments1[attachmentID1][0]
+              
+        attachmentIDs2 = attachments2.keys()
+        self.check(1,len(attachmentIDs2), "%s: Received Correct Number of Attachments on Listener"%(comp_port_name))
+        attachmentID2 = attachmentIDs2[0]
+        sddsStreamDef2 = attachments2[attachmentID2][0]
+        self.check(sddsStreamDef1.id==sddsStreamDef2.id,True,'%s: Received correct attach from listener allocation'%(comp_port_name))
+
+
+    def _verifyAttach(self,attachments,status,comp_port_name=""):
+        attachmentIDs = attachments.keys()
+        self.check(1,len(attachmentIDs), "%s: Received Correct Number of Attachments"%(comp_port_name))
+        attachmentID = attachmentIDs[0]
+        sddsStreamDef1 = attachments[attachmentID][0]
+        
+        self.checkAlmostEqual(status['FRONTEND::tuner_status::sample_rate'], sddsStreamDef1.sampleRate, '%s: Attach SampleRate has correct value'%(comp_port_name),places=0)
+        self.check(status['FRONTEND::tuner_status::output_multicast'], sddsStreamDef1.multicastAddress, '%s: Attach multicast Address has correct value'%(comp_port_name))
+        self.check(status['FRONTEND::tuner_status::output_vlan'], sddsStreamDef1.vlan, '%s: Attach vlan has correct value'%(comp_port_name))
+        self.check(status['FRONTEND::tuner_status::output_port'], sddsStreamDef1.port, '%s: Attach port has correct value'%(comp_port_name))
+
+
+    def _verifySRI(self,sri,status,comp_port_name=""):
+        
+        # verify SRI
+
+    
+        self.checkAlmostEqual(status['FRONTEND::tuner_status::sample_rate'], 1.0/sri.xdelta, '%s: SRI xdelta has correct value'%(comp_port_name),places=0)
+        
+        #complex is an optional property but if it is present check that it matches sri.
+        if 'FRONTEND::tuner_status::complex' in status:
+            self.check(status['FRONTEND::tuner_status::complex'],sri.mode,'%s: SRI mode has correct value'%(comp_port_name))
+         
+        # verify SRI keywords
+        keywords = properties.props_to_dict(sri.keywords)
+        if 'COL_RF' in keywords:
+            self.check(True,True,'%s: SRI has COL_RF keyword'%(comp_port_name))
+            self.checkAlmostEqual(status['FRONTEND::tuner_status::center_frequency'],keywords['COL_RF'],'%s: SRI keyword COL_RF has correct value'%(comp_port_name),places=0)
+        else:
+            self.check(False,True,'%s: SRI has COL_RF keyword'%(comp_port_name))
+             
+        if 'CHAN_RF' in keywords:
+            self.check(True,True,'%s: SRI has CHAN_RF keyword'%(comp_port_name))
+            self.checkAlmostEqual(status['FRONTEND::tuner_status::center_frequency'],keywords['CHAN_RF'],'%s: SRI keyword CHAN_RF has correct value'%(comp_port_name),places=0)
+        else:
+            self.check(False,True,'%s: SRI has CHAN_RF keyword'%(comp_port_name))
+             
+        if 'FRONTEND::BANDWIDTH' in keywords:
+            self.check(True,True,'%s: SRI has FRONTEND::BANDWIDTH keyword'%(comp_port_name))
+            if not self.checkAlmostEqual(status['FRONTEND::tuner_status::bandwidth'],keywords['FRONTEND::BANDWIDTH'],'%s: SRI keyword FRONTEND::BANDWIDTH has correct value'%(comp_port_name),places=0):
+                self.checkAlmostEqual(status['FRONTEND::tuner_status::sample_rate'],keywords['FRONTEND::BANDWIDTH'],'%s: SRI keyword FRONTEND::BANDWIDTH has sample rate value'%(comp_port_name),places=0, silentFailure=True, successMsg='WARN')
+        else:
+            self.check(False,True,'%s: SRI has FRONTEND::BANDWIDTH keyword'%(comp_port_name))
+             
+        if 'FRONTEND::RF_FLOW_ID' in keywords:
+            self.check(True,True,'%s: SRI has FRONTEND::RF_FLOW_ID keyword'%(comp_port_name))
+            self.check(status['FRONTEND::tuner_status::rf_flow_id'],keywords['FRONTEND::RF_FLOW_ID'],'%s: SRI keyword FRONTEND::RF_FLOW_ID has correct value'%(comp_port_name))
+        else:
+            self.check(False,True,'%s: SRI has FRONTEND::RF_FLOW_ID keyword'%(comp_port_name))
+             
+        if 'FRONTEND::DEVICE_ID' in keywords:
+            self.check(True,True,'%s: SRI has FRONTEND::DEVICE_ID keyword'%(comp_port_name))
+            #self.check(1,keywords['FRONTEND::DEVICE_ID'],'SRI keyword FRONTEND::DEVICE_ID has correct value')
+        else:
+            self.check(False,True,'%s: SRI has FRONTEND::DEVICE_ID keyword'%(comp_port_name))    
+         
     # TODO - noseify
     def testFRONTEND_3_5_TunerStatusProperties(self):
         ''' RX_DIG 5 TunerStatusProperties
