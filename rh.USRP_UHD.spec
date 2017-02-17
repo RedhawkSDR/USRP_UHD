@@ -30,7 +30,7 @@ Prefix:         %{_prefix}
 %define _infodir       %{_prefix}/info
 
 Name:           rh.USRP_UHD
-Version:        4.1.0
+Version:        5.0.0
 Release:        1%{?dist}
 Summary:        Device %{name}
 
