@@ -32,6 +32,23 @@ with this program.  If not, see http://www.gnu.org/licenses/.
     <supportsinterface repid="IDL:CF/TestableObject:1.0" supportsname="TestableObject"/>
     <ports>
       <provides repid="IDL:FRONTEND/RFInfo:1.0" providesname="RFInfo_in">
+        <description>First RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.</description>
+        <porttype type="data"/>
+      </provides>
+      <provides repid="IDL:FRONTEND/RFInfo:1.0" providesname="RFInfo_in2">
+        <description>Second RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.</description>
+        <porttype type="data"/>
+      </provides>
+      <provides repid="IDL:FRONTEND/RFInfo:1.0" providesname="RFInfo_in3">
+        <description>Third RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.
+
+Note: The third and fourth RFInfo_in ports are not used when the USRP hardware only has two RF input connectors.</description>
+        <porttype type="data"/>
+      </provides>
+      <provides repid="IDL:FRONTEND/RFInfo:1.0" providesname="RFInfo_in4">
+        <description>Fourth RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.
+
+Note: The third and fourth RFInfo_in ports are not used when the USRP hardware only has two RF input connectors.</description>
         <porttype type="data"/>
       </provides>
       <provides repid="IDL:FRONTEND/DigitalTuner:1.0" providesname="DigitalTuner_in">
@@ -41,6 +58,13 @@ with this program.  If not, see http://www.gnu.org/licenses/.
         <porttype type="data"/>
       </uses>
       <uses repid="IDL:FRONTEND/RFInfo:1.0" usesname="RFInfoTX_out">
+        <description>First RF TX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.</description>
+        <porttype type="data"/>
+      </uses>
+      <uses repid="IDL:FRONTEND/RFInfo:1.0" usesname="RFInfoTX_out2">
+        <description>Second RF TX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.
+
+Note: The second RFInfo_out ports are not used when the USRP hardware only has one RF TX connectors.</description>
         <porttype type="data"/>
       </uses>
       <provides repid="IDL:BULKIO/dataShort:1.0" providesname="dataShortTX_in">

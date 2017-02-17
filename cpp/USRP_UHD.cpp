@@ -404,15 +404,48 @@ void USRP_UHD_i::construct() {
     device_group_id_global = "USRP_GROUP_ID_NOT_SET";
 
     // initialize rf info packets w/ very large ranges
-    rx_rfinfo_pkt.rf_flow_id = "USRP_RX_FLOW_ID_NOT_SET";
-    rx_rfinfo_pkt.rf_center_freq = 50e9; // 50 GHz
-    rx_rfinfo_pkt.rf_bandwidth = 100e9; // 100 GHz, makes range 0 Hz to 100 GHz
-    rx_rfinfo_pkt.if_center_freq = 0; // 0 Hz, no up/down converter
+    rfinfoPortMappingStruct rf_port_info;
+    rf_port_info.rfinfo_pkt.rf_center_freq = 50e9; // 50 GHz
+    rf_port_info.rfinfo_pkt.rf_bandwidth = 100e9; // 100 GHz, makes range 0 Hz to 100 GHz
+    rf_port_info.rfinfo_pkt.if_center_freq = 0; // 0 Hz, no up/down converter
 
-    tx_rfinfo_pkt.rf_flow_id = "USRP_TX_FLOW_ID_NOT_SET";
-    tx_rfinfo_pkt.rf_center_freq = 50e9; // 50 GHz
-    tx_rfinfo_pkt.rf_bandwidth = 100e9; // 100 GHz, makes range 0 Hz to 100 GHz
-    tx_rfinfo_pkt.if_center_freq = 0; // 0 Hz, no up/down converter
+    // RX
+    rf_port_info.tuner_idx = 0;
+    rf_port_info.antenna.clear(); // This gets set later
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFA_RFInfo_in";
+    rf_port_info_map.insert(str2rfinfo_pair_t("RFInfo_in",rf_port_info));
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFA_RFInfo_in2";
+    rf_port_info_map.insert(str2rfinfo_pair_t("RFInfo_in2",rf_port_info));
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFA:CAL_RX";
+    rf_port_info.antenna = "CAL"; // We set CAL here since it's known
+    rf_port_info_map.insert(str2rfinfo_pair_t("CAL_RX",rf_port_info));
+
+    rf_port_info.tuner_idx = 1;
+    rf_port_info.antenna.clear(); // This gets set later
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFB_RFInfo_in3";
+    rf_port_info_map.insert(str2rfinfo_pair_t("RFInfo_in3",rf_port_info));
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFB_RFInfo_in4";
+    rf_port_info_map.insert(str2rfinfo_pair_t("RFInfo_in4",rf_port_info));
+    rf_port_info.antenna = "CAL"; // We set CAL here since it's known
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFB:CAL_RX";
+    rf_port_info_map.insert(str2rfinfo_pair_t("CAL_RX2",rf_port_info));
+
+    // TX
+    rf_port_info.tuner_idx = 2;
+    rf_port_info.antenna.clear(); // This gets set later
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFA_RFInfoTX_out";
+    rf_port_info_map.insert(str2rfinfo_pair_t("RFInfoTX_out",rf_port_info));
+    rf_port_info.antenna = "CAL"; // We set CAL here since it's known
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFA:CAL_TX";
+    rf_port_info_map.insert(str2rfinfo_pair_t("CAL_TX",rf_port_info));
+
+    rf_port_info.tuner_idx = 3;
+    rf_port_info.antenna.clear(); // This gets set later
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFB_RFInfoTX_out2";
+    rf_port_info_map.insert(str2rfinfo_pair_t("RFInfoTX_out2",rf_port_info));
+    rf_port_info.antenna = "CAL"; // We set CAL here since it's known
+    rf_port_info.rfinfo_pkt.rf_flow_id = "USRP_RFB:CAL_TX";
+    rf_port_info_map.insert(str2rfinfo_pair_t("CAL_TX2",rf_port_info));
 }
 
 void USRP_UHD_i::constructor() {
@@ -423,6 +456,7 @@ void USRP_UHD_i::constructor() {
     addPropertyListener(device_group_id_global, this, &USRP_UHD_i::deviceGroupIdChanged);
     addPropertyListener(update_available_devices, this, &USRP_UHD_i::updateAvailableDevicesChanged);
     addPropertyListener(device_reference_source_global, this, &USRP_UHD_i::deviceReferenceSourceChanged);
+    addPropertyListener(configure_tuner_antenna, this, &USRP_UHD_i::antennaChanged);
 
     try{
         initUsrp();
@@ -503,6 +537,17 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
     double opt_sr = 0.0;
     double opt_bw = 0.0;
 
+    str2rfinfo_map_t::iterator it=rf_port_info_map.begin();
+    for (; it!=rf_port_info_map.end(); it++) {
+        if (it->second.tuner_idx == tuner_id && it->second.antenna == fts.antenna) {
+            break;
+        }
+    }
+    if (it==rf_port_info_map.end()) {
+        LOG_ERROR(USRP_UHD_i,"deviceSetTuning|tuner_id="<<tuner_id<<" antenna="<<fts.antenna<<". No matching RFInfo port found!! Failed allocation.");
+        throw CF::Device::InvalidState("No matching RFInfo port found! Device must be in an invalid state.");
+    }
+
     if (fts.tuner_type == "RX_DIGITIZER") {
 
         { // scope for prop_lock
@@ -511,7 +556,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             // check request against USRP specs and analog input
             const bool complex = true; // USRP operates using complex data
             try {
-                if( !frontend::validateRequestVsDevice(request, rx_rfinfo_pkt, complex, device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
+                if( !frontend::validateRequestVsDevice(request, it->second.rfinfo_pkt, complex, device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
                         device_channels[tuner_id].bandwidth_max, device_channels[tuner_id].rate_max) ){
                     throw FRONTEND::BadParameterException("INVALID REQUEST -- falls outside of analog input or device capabilities");
                 }
@@ -521,8 +566,8 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             }
 
             // calculate if_offset according to rx rfinfo packet
-            if(frontend::floatingPointCompare(rx_rfinfo_pkt.if_center_freq,0) > 0){
-                if_offset = rx_rfinfo_pkt.rf_center_freq-rx_rfinfo_pkt.if_center_freq;
+            if(frontend::floatingPointCompare(it->second.rfinfo_pkt.if_center_freq,0) > 0){
+                if_offset = it->second.rfinfo_pkt.rf_center_freq-it->second.rfinfo_pkt.if_center_freq;
             }
 
             opt_sr = optimizeRate(request.sample_rate, tuner_id);
@@ -617,7 +662,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             // check request against USRP specs and analog input
             const bool complex = true; // USRP operates using complex data
             try{
-                if( !frontend::validateRequestVsDevice(request, tx_rfinfo_pkt, complex, device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
+                if( !frontend::validateRequestVsDevice(request, it->second.rfinfo_pkt, complex, device_channels[tuner_id].freq_min, device_channels[tuner_id].freq_max,
                         device_channels[tuner_id].bandwidth_max, device_channels[tuner_id].rate_max) ){
                     throw FRONTEND::BadParameterException("INVALID REQUEST -- falls outside of analog output or device capabilities");
                 }
@@ -764,33 +809,22 @@ template <class IN_PORT_TYPE> bool USRP_UHD_i::transmitHelper(IN_PORT_TYPE *data
     return true;
 }
 
-void USRP_UHD_i::updateRxRfFlowId(std::string rf_flow_id){
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " rf_flow_id=" << rf_flow_id);
+void USRP_UHD_i::updateRfFlowId(const std::string &port_name){
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name);
 
-    for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
-        if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
-
-            scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
-            frontend_tuner_status[tuner_id].rf_flow_id = rf_flow_id;
-            usrp_tuners[tuner_id].update_sri = true;
-        }
+    str2rfinfo_map_t::iterator rfinfo = rf_port_info_map.find(port_name);
+    if (rfinfo != rf_port_info_map.end()
+            && !rfinfo->second.antenna.empty()
+            && rfinfo->second.antenna == frontend_tuner_status[rfinfo->second.tuner_idx].antenna) {
+        scoped_tuner_lock tuner_lock(usrp_tuners[rfinfo->second.tuner_idx].lock);
+        frontend_tuner_status[rfinfo->second.tuner_idx].rf_flow_id = rfinfo->second.rfinfo_pkt.rf_flow_id;
+        usrp_tuners[rfinfo->second.tuner_idx].update_sri = true;
     }
+
+
 }
 
-void USRP_UHD_i::updateTxRfFlowId(std::string rf_flow_id){
-    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " rf_flow_id=" << rf_flow_id);
-
-    for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
-        if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
-
-            scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
-            frontend_tuner_status[tuner_id].rf_flow_id = rf_flow_id;
-            usrp_tuners[tuner_id].update_sri = true;
-        }
-    }
-}
-
-void USRP_UHD_i::updateGroupId(std::string group){
+void USRP_UHD_i::updateGroupId(const std::string &group){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " group=" << group);
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
 
@@ -914,6 +948,58 @@ void USRP_UHD_i::deviceGroupIdChanged(std::string old_value, std::string new_val
     LOG_DEBUG(USRP_UHD_i,"deviceGroupIdChanged|device_group_id_global=" << device_group_id_global);
 
     updateGroupId(new_value);
+}
+
+void USRP_UHD_i::antennaChanged(const configure_tuner_antenna_struct& old_value, const configure_tuner_antenna_struct& new_value) {
+    LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
+
+    const size_t idx = configure_tuner_antenna.tuner_index;
+    const std::string antenna = configure_tuner_antenna.antenna;
+    configure_tuner_antenna.antenna.clear();
+
+    LOG_DEBUG(USRP_UHD_i,"antennaChanged|tuner_id=" << idx);
+    LOG_DEBUG(USRP_UHD_i,"antennaChanged|antenna=" << antenna);
+
+    exclusive_lock lock(prop_lock);
+
+    // Check validity
+    if (antenna.empty() || idx >= frontend_tuner_status.size())
+        return;
+    bool found = false;
+    for (size_t i=0; i < frontend_tuner_status[idx].available_antennas.size(); i++)
+        found = found || (antenna == frontend_tuner_status[idx].available_antennas[i]);
+    if (!found)
+        return;
+
+    // Check if change needed
+    if (antenna == frontend_tuner_status[idx].antenna)
+        return;
+
+    // Make the change and update antenna value
+    //TODO - need a lock?
+    if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
+        usrp_device_ptr->set_rx_antenna(antenna, frontend_tuner_status[idx].tuner_number);
+        frontend_tuner_status[idx].antenna =
+                usrp_device_ptr->get_rx_antenna(frontend_tuner_status[idx].tuner_number);
+    } else {
+        usrp_device_ptr->set_tx_antenna(antenna, frontend_tuner_status[idx].tuner_number);
+        frontend_tuner_status[idx].antenna =
+                usrp_device_ptr->get_tx_antenna(frontend_tuner_status[idx].tuner_number);
+    }
+
+    // Update RF Flow ID
+    str2rfinfo_map_t::iterator it=rf_port_info_map.begin();
+    for (; it!=rf_port_info_map.end(); it++) {
+        if (it->second.tuner_idx == idx
+                && it->second.antenna == frontend_tuner_status[idx].antenna) {
+            frontend_tuner_status[idx].rf_flow_id = it->second.rfinfo_pkt.rf_flow_id;
+            break;
+        }
+    }
+    if (it==rf_port_info_map.end()) {
+        LOG_WARN(USRP_UHD_i,"antennaChanged|tuner_id=" << idx
+                << "No matching RFInfo port found!! Failed to update RF Flow ID.");
+    }
 }
 
 // clear bookkeeping when not associated with a H/W device
@@ -1132,13 +1218,15 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
         LOG_DEBUG(USRP_UHD_i, "Found " << dev_addrs.size() << " devices, choosing first one found.")
 
         usrp_device_ptr = uhd::usrp::multi_usrp::make(dev_addrs[0]);
+        const size_t num_rx_channels = usrp_device_ptr->get_rx_num_channels();
+        const size_t num_tx_channels = usrp_device_ptr->get_tx_num_channels();
 
         // get_rx/tx_freq will throw an exception if set_rx/tx_freq has not already been called
-        for (size_t chan = 0; chan < usrp_device_ptr->get_rx_num_channels(); chan++) {
+        for (size_t chan = 0; chan < num_rx_channels; chan++) {
             double setFreq = (usrp_device_ptr->get_rx_freq_range(chan).start() + usrp_device_ptr->get_rx_freq_range(chan).stop()) / 2;
             usrp_device_ptr->set_rx_freq(setFreq, chan);
         }
-        for (size_t chan = 0; chan < usrp_device_ptr->get_tx_num_channels(); chan++) {
+        for (size_t chan = 0; chan < num_tx_channels; chan++) {
             double setFreq = (usrp_device_ptr->get_tx_freq_range(chan).start() + usrp_device_ptr->get_tx_freq_range(chan).stop()) / 2;
             usrp_device_ptr->set_tx_freq(setFreq, chan);
         }
@@ -1150,13 +1238,11 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
         double fsec = tmp_time.tv_usec / 1e6;
         usrp_device_ptr->set_time_now(uhd::time_spec_t(wsec,fsec));
 
+        // Initialize tasking and status vectors
+        setNumChannels(num_rx_channels,num_tx_channels);
+
         // This will update property structures that describe the USRP device (motherboard + daughtercards)
         updateDeviceInfo();
-
-        // Initialize tasking and status vectors
-        size_t num_rx_channels = usrp_device_ptr->get_rx_num_channels();
-        size_t num_tx_channels = usrp_device_ptr->get_tx_num_channels();
-        setNumChannels(num_rx_channels,num_tx_channels);
 
         //Initialize Data Members
         long source_prop = 0;
@@ -1175,16 +1261,22 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
             frontend_tuner_status[tuner_id].center_frequency = device_channels[tuner_id].freq_current;
             frontend_tuner_status[tuner_id].sample_rate = device_channels[tuner_id].rate_current;
             frontend_tuner_status[tuner_id].bandwidth = device_channels[tuner_id].bandwidth_current;
-            if( device_channels[tuner_id].tuner_type == "RX_DIGITIZER")
-                frontend_tuner_status[tuner_id].rf_flow_id = rx_rfinfo_pkt.rf_flow_id;
-            else if( device_channels[tuner_id].tuner_type == "TX")
-                frontend_tuner_status[tuner_id].rf_flow_id = tx_rfinfo_pkt.rf_flow_id;
+            frontend_tuner_status[tuner_id].antenna = device_channels[tuner_id].antenna;
+            frontend_tuner_status[tuner_id].available_antennas = device_channels[tuner_id].available_antennas;
+
+            for (str2rfinfo_map_t::iterator it=rf_port_info_map.begin(); it!=rf_port_info_map.end(); it++) {
+                if (it->second.tuner_idx == tuner_id && it->second.antenna == frontend_tuner_status[tuner_id].antenna) {
+                    frontend_tuner_status[tuner_id].rf_flow_id = it->second.rfinfo_pkt.rf_flow_id;
+                    break;
+                }
+            }
+
             frontend_tuner_status[tuner_id].reference_source = source_prop;
             frontend_tuner_status[tuner_id].gain = device_channels[tuner_id].gain_current;
             frontend_tuner_status[tuner_id].group_id = device_group_id_global;
             frontend_tuner_status[tuner_id].stream_id.clear();
 
-            //frontend_tuner_status[tuner_id].tuner_number = tuner_id;
+            frontend_tuner_status[tuner_id].tuner_index = tuner_id;
             frontend_tuner_status[tuner_id].tuner_number = device_channels[tuner_id].chan_num;
             frontend_tuner_status[tuner_id].enabled = false;
             frontend_tuner_status[tuner_id].complex = true;
@@ -1248,10 +1340,21 @@ void USRP_UHD_i::updateDeviceInfo() {
     }
 
     device_channels.clear();
-    size_t num_rx_channels = usrp_device_ptr->get_rx_num_channels();
+    const size_t num_rx_channels = usrp_device_ptr->get_rx_num_channels();
     LOG_DEBUG(USRP_UHD_i,"updateDeviceInfo|found " << num_rx_channels << " rx channels");
-    size_t num_tx_channels = usrp_device_ptr->get_tx_num_channels();
+    const size_t num_tx_channels = usrp_device_ptr->get_tx_num_channels();
     LOG_DEBUG(USRP_UHD_i,"updateDeviceInfo|found " << num_tx_channels << " tx channels");
+
+    std::vector<str2strptr_pair_t> rx_antenna_mapping;
+    rx_antenna_mapping.push_back(str2strptr_pair_t("RFInfo_in",  &device_antenna_mapping.RFInfo_in));
+    rx_antenna_mapping.push_back(str2strptr_pair_t("RFInfo_in2", &device_antenna_mapping.RFInfo_in2));
+    rx_antenna_mapping.push_back(str2strptr_pair_t("RFInfo_in3", &device_antenna_mapping.RFInfo_in3));
+    rx_antenna_mapping.push_back(str2strptr_pair_t("RFInfo_in4", &device_antenna_mapping.RFInfo_in4));
+
+    std::vector<str2strptr_pair_t> tx_antenna_mapping;
+    tx_antenna_mapping.push_back(str2strptr_pair_t("RFInfoTX_out",  &device_antenna_mapping.RFInfoTX_out));
+    tx_antenna_mapping.push_back(str2strptr_pair_t("RFInfoTX_out2", &device_antenna_mapping.RFInfoTX_out2));
+
     usrp_ranges.resize(num_rx_channels+num_tx_channels);
     for (size_t chan = 0; chan < num_rx_channels; chan++) {
         usrp_channel_struct availChan;
@@ -1261,6 +1364,22 @@ void USRP_UHD_i::updateDeviceInfo() {
         if(availChan.ch_name.find("unknown") != std::string::npos)
             availChan.tuner_type = "UNKNOWN";
         availChan.antenna = usrp_device_ptr->get_rx_antenna(chan);
+        availChan.available_antennas = usrp_device_ptr->get_rx_antennas(chan);
+
+        // This assumes there should be at most 3 antennas, and the 3rd/last will always be CAL
+        switch(availChan.available_antennas.size()) {
+        case 3:
+        case 2:
+            if (availChan.available_antennas[1] != "CAL") {
+                rx_antenna_mapping[2*chan+1].second->assign(availChan.available_antennas[1]);
+                rf_port_info_map[rx_antenna_mapping[2*chan+1].first].antenna = availChan.available_antennas[1];
+                rf_port_info_map[rx_antenna_mapping[2*chan+1].first].tuner_idx = chan;
+            }
+        case 1:
+            rx_antenna_mapping[2*chan].second->assign(availChan.available_antennas[0]);
+            rf_port_info_map[rx_antenna_mapping[2*chan].first].antenna = availChan.available_antennas[0];
+            rf_port_info_map[rx_antenna_mapping[2*chan].first].tuner_idx = chan;
+        }
 
         availChan.freq_current = usrp_device_ptr->get_rx_freq(chan);
         usrp_ranges[chan].frequency = usrp_device_ptr->get_rx_freq_range(chan); // this is the CF range, actual range is +/- (sr/2)
@@ -1303,6 +1422,14 @@ void USRP_UHD_i::updateDeviceInfo() {
         if(availChan.ch_name.find("unknown") != std::string::npos)
             availChan.tuner_type = "UNKNOWN";
         availChan.antenna = usrp_device_ptr->get_tx_antenna(chan);
+        availChan.available_antennas = usrp_device_ptr->get_tx_antennas(chan);
+
+        // This assumes there should be at most 2 antennas, and the 2rd/last will always be CAL
+        if (availChan.available_antennas.size() > 0) {
+            tx_antenna_mapping[chan].second->assign(availChan.available_antennas[0]);
+            rf_port_info_map[tx_antenna_mapping[chan].first].antenna = availChan.available_antennas[0];
+            rf_port_info_map[tx_antenna_mapping[chan].first].tuner_idx = num_rx_channels+chan;
+        }
 
         availChan.freq_current = usrp_device_ptr->get_tx_freq(chan);
         usrp_ranges[num_rx_channels+chan].frequency = usrp_device_ptr->get_tx_freq_range(chan); // this is the CF range, actual range is +/- (sr/2)
@@ -1475,12 +1602,29 @@ long USRP_UHD_i::usrpReceive(size_t tuner_id, double timeout){
 template <class PACKET_TYPE> bool USRP_UHD_i::usrpTransmit(size_t tuner_id, PACKET_TYPE *packet){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__);
     if(usrp_tuners[tuner_id].update_sri){
-        tx_rfinfo_pkt.rf_center_freq = frontend_tuner_status[tuner_id].center_frequency;
-        tx_rfinfo_pkt.if_center_freq = frontend_tuner_status[tuner_id].center_frequency;
-        tx_rfinfo_pkt.rf_bandwidth = frontend_tuner_status[tuner_id].bandwidth;
-        LOG_DEBUG(USRP_UHD_i,"usrpTransmit|tuner_id=" << tuner_id << "Sending updated tx_rfinfo_pkt: rf_center_freq="<<tx_rfinfo_pkt.rf_center_freq<<" if_center_freq="<<tx_rfinfo_pkt.if_center_freq<<" bandwidth=tx_rfinfo_pkt.rf_bandwidth");
 
-        RFInfoTX_out->rfinfo_pkt(tx_rfinfo_pkt);
+        str2rfinfo_map_t::iterator it=rf_port_info_map.begin();
+        for (; it!=rf_port_info_map.end(); it++) {
+            if (it->second.tuner_idx == tuner_id && it->second.antenna == frontend_tuner_status[tuner_id].antenna) {
+                break;
+            }
+        }
+        if (it==rf_port_info_map.end()) {
+            LOG_ERROR(USRP_UHD_i,"usrpTransmit|tuner_id=" << tuner_id << "No matching RFInfo port found!! Failed transmit.");
+            return false;
+        }
+        it->second.rfinfo_pkt.rf_center_freq = frontend_tuner_status[tuner_id].center_frequency;
+        it->second.rfinfo_pkt.if_center_freq = frontend_tuner_status[tuner_id].center_frequency;
+        it->second.rfinfo_pkt.rf_bandwidth = frontend_tuner_status[tuner_id].bandwidth;
+        LOG_DEBUG(USRP_UHD_i,"usrpTransmit|tuner_id=" << tuner_id << "Sending updated rfinfo_pkt: RFInfo port="<<it->first
+                <<" rf_center_freq="<<it->second.rfinfo_pkt.rf_center_freq
+                <<" if_center_freq="<<it->second.rfinfo_pkt.if_center_freq
+                <<" bandwidth="<<it->second.rfinfo_pkt.rf_bandwidth);
+
+        if (it->first == "RFInfoTX_out")
+            RFInfoTX_out->rfinfo_pkt(it->second.rfinfo_pkt);
+        else if (it->first == "RFInfoTX_out2")
+            RFInfoTX_out2->rfinfo_pkt(it->second.rfinfo_pkt);
         usrp_tuners[tuner_id].update_sri = false;
     }
 
@@ -1514,13 +1658,30 @@ bool USRP_UHD_i::usrpEnable(size_t tuner_id){
 
     if(frontend_tuner_status[tuner_id].tuner_type == "TX"){
 
-        tx_rfinfo_pkt.rf_center_freq = frontend_tuner_status[tuner_id].center_frequency;
-        tx_rfinfo_pkt.if_center_freq = frontend_tuner_status[tuner_id].center_frequency;
-        tx_rfinfo_pkt.rf_bandwidth = frontend_tuner_status[tuner_id].bandwidth;
+        str2rfinfo_map_t::iterator it=rf_port_info_map.begin();
+        for (; it!=rf_port_info_map.end(); it++) {
+            if (it->second.tuner_idx == tuner_id && it->second.antenna == frontend_tuner_status[tuner_id].antenna) {
+                break;
+            }
+        }
+        if (it==rf_port_info_map.end()) {
+            LOG_ERROR(USRP_UHD_i,"usrpEnable|tuner_id=" << tuner_id << "No matching RFInfo port found!! Failed enable.");
+            return false;
+        }
+
+        it->second.rfinfo_pkt.rf_center_freq = frontend_tuner_status[tuner_id].center_frequency;
+        it->second.rfinfo_pkt.if_center_freq = frontend_tuner_status[tuner_id].center_frequency;
+        it->second.rfinfo_pkt.rf_bandwidth = frontend_tuner_status[tuner_id].bandwidth;
 
         if(!prev_enabled){
-            LOG_DEBUG(USRP_UHD_i,"usrpEnable|tuner_id=" << tuner_id << "Sending updated tx_rfinfo_pkt: rf_center_freq="<<tx_rfinfo_pkt.rf_center_freq<<" if_center_freq="<<tx_rfinfo_pkt.if_center_freq<<" bandwidth=tx_rfinfo_pkt.rf_bandwidth");
-            RFInfoTX_out->rfinfo_pkt(tx_rfinfo_pkt);
+            LOG_DEBUG(USRP_UHD_i,"usrpEnable|tuner_id=" << tuner_id << "Sending updated rfinfo_pkt: port="<<it->first
+                    <<" rf_center_freq="<<it->second.rfinfo_pkt.rf_center_freq
+                    <<" if_center_freq="<<it->second.rfinfo_pkt.if_center_freq
+                    <<" bandwidth="<<it->second.rfinfo_pkt.rf_bandwidth);
+            if (it->first == "RFInfoTX_out")
+                RFInfoTX_out->rfinfo_pkt(it->second.rfinfo_pkt);
+            else if (it->first == "RFInfoTX_out2")
+                RFInfoTX_out2->rfinfo_pkt(it->second.rfinfo_pkt);
             usrp_tuners[tuner_id].update_sri = false;
         }
 
@@ -1687,21 +1848,25 @@ Functions servicing the RFInfo port(s)
 std::string USRP_UHD_i::get_rf_flow_id(const std::string& port_name){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name);
 
-    if( port_name == "RFInfo_in"){
+    str2rfinfo_map_t::iterator rfinfo = rf_port_info_map.find(port_name);
+    if( rfinfo != rf_port_info_map.end()){
         exclusive_lock lock(prop_lock);
-        return rx_rfinfo_pkt.rf_flow_id;
+        return rfinfo->second.rfinfo_pkt.rf_flow_id;
     } else {
-        LOG_WARN(USRP_UHD_i, "usrpCreateRxStream|Unknown port name: " << port_name);
+        LOG_WARN(USRP_UHD_i, "get_rf_flow_id|Unknown port name: " << port_name);
         return "";
     }
 }
 void USRP_UHD_i::set_rf_flow_id(const std::string& port_name, const std::string& id){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name << " id=" << id);
 
-    if( port_name == "RFInfo_in"){
-        updateRxRfFlowId(id);
-        exclusive_lock lock(prop_lock);
-        rx_rfinfo_pkt.rf_flow_id = id;
+    str2rfinfo_map_t::iterator rfinfo = rf_port_info_map.find(port_name);
+    if( rfinfo != rf_port_info_map.end()){
+        {
+            exclusive_lock lock(prop_lock);
+            rfinfo->second.rfinfo_pkt.rf_flow_id = id;
+        }
+        updateRfFlowId(port_name);
     } else {
         LOG_WARN(USRP_UHD_i, "set_rf_flow_id|Unknown port name: " << port_name);
     }
@@ -1710,62 +1875,63 @@ frontend::RFInfoPkt USRP_UHD_i::get_rfinfo_pkt(const std::string& port_name){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name);
 
     frontend::RFInfoPkt tmp;
-    frontend::RFInfoPkt* pkt;
-    if( port_name == "RFInfo_in"){
-        exclusive_lock lock(prop_lock);
-        pkt = &rx_rfinfo_pkt;
-    } else {
+    str2rfinfo_map_t::iterator rfinfo = rf_port_info_map.find(port_name);
+    if( rfinfo == rf_port_info_map.end()){
         LOG_WARN(USRP_UHD_i, "get_rfinfo_pkt|Unknown port name: " << port_name);
         return tmp;
     }
-    tmp.rf_flow_id = pkt->rf_flow_id;
-    tmp.rf_center_freq = pkt->rf_center_freq;
-    tmp.rf_bandwidth = pkt->rf_bandwidth;
-    tmp.if_center_freq = pkt->if_center_freq;
-    tmp.spectrum_inverted = pkt->spectrum_inverted;
-    tmp.sensor.collector = pkt->sensor.collector;
-    tmp.sensor.mission = pkt->sensor.mission;
-    tmp.sensor.rx = pkt->sensor.rx;
-    tmp.sensor.antenna.description = pkt->sensor.antenna.description;
-    tmp.sensor.antenna.name = pkt->sensor.antenna.name;
-    tmp.sensor.antenna.size = pkt->sensor.antenna.size;
-    tmp.sensor.antenna.type = pkt->sensor.antenna.type;
-    tmp.sensor.feed.name = pkt->sensor.feed.name;
-    tmp.sensor.feed.polarization = pkt->sensor.feed.polarization;
-    tmp.sensor.feed.freq_range.max_val = pkt->sensor.feed.freq_range.max_val;
-    tmp.sensor.feed.freq_range.min_val = pkt->sensor.feed.freq_range.min_val;
-    tmp.sensor.feed.freq_range.values.resize(pkt->sensor.feed.freq_range.values.size());
-    for (unsigned int i=0; i<pkt->sensor.feed.freq_range.values.size(); i++) {
-        tmp.sensor.feed.freq_range.values[i] = pkt->sensor.feed.freq_range.values[i];
+    exclusive_lock lock(prop_lock);
+    tmp.rf_flow_id = rfinfo->second.rfinfo_pkt.rf_flow_id;
+    tmp.rf_center_freq = rfinfo->second.rfinfo_pkt.rf_center_freq;
+    tmp.rf_bandwidth = rfinfo->second.rfinfo_pkt.rf_bandwidth;
+    tmp.if_center_freq = rfinfo->second.rfinfo_pkt.if_center_freq;
+    tmp.spectrum_inverted = rfinfo->second.rfinfo_pkt.spectrum_inverted;
+    tmp.sensor.collector = rfinfo->second.rfinfo_pkt.sensor.collector;
+    tmp.sensor.mission = rfinfo->second.rfinfo_pkt.sensor.mission;
+    tmp.sensor.rx = rfinfo->second.rfinfo_pkt.sensor.rx;
+    tmp.sensor.antenna.description = rfinfo->second.rfinfo_pkt.sensor.antenna.description;
+    tmp.sensor.antenna.name = rfinfo->second.rfinfo_pkt.sensor.antenna.name;
+    tmp.sensor.antenna.size = rfinfo->second.rfinfo_pkt.sensor.antenna.size;
+    tmp.sensor.antenna.type = rfinfo->second.rfinfo_pkt.sensor.antenna.type;
+    tmp.sensor.feed.name = rfinfo->second.rfinfo_pkt.sensor.feed.name;
+    tmp.sensor.feed.polarization = rfinfo->second.rfinfo_pkt.sensor.feed.polarization;
+    tmp.sensor.feed.freq_range.max_val = rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.max_val;
+    tmp.sensor.feed.freq_range.min_val = rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.min_val;
+    tmp.sensor.feed.freq_range.values.resize(rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.values.size());
+    for (unsigned int i=0; i<rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.values.size(); i++) {
+        tmp.sensor.feed.freq_range.values[i] = rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.values[i];
     }
     return tmp;
 }
 void USRP_UHD_i::set_rfinfo_pkt(const std::string& port_name, const frontend::RFInfoPkt &pkt){
     LOG_TRACE(USRP_UHD_i,__PRETTY_FUNCTION__ << " port_name=" << port_name << " pkt.rf_flow_id=" << pkt.rf_flow_id);
 
-    if( port_name == "RFInfo_in"){
-        updateRxRfFlowId(pkt.rf_flow_id);
-        exclusive_lock lock(prop_lock);
-        rx_rfinfo_pkt.rf_flow_id = pkt.rf_flow_id;
-        rx_rfinfo_pkt.rf_center_freq = pkt.rf_center_freq;
-        rx_rfinfo_pkt.rf_bandwidth = pkt.rf_bandwidth;
-        rx_rfinfo_pkt.if_center_freq = pkt.if_center_freq;
-        rx_rfinfo_pkt.spectrum_inverted = pkt.spectrum_inverted;
-        rx_rfinfo_pkt.sensor.collector = pkt.sensor.collector;
-        rx_rfinfo_pkt.sensor.mission = pkt.sensor.mission;
-        rx_rfinfo_pkt.sensor.rx = pkt.sensor.rx;
-        rx_rfinfo_pkt.sensor.antenna.description = pkt.sensor.antenna.description;
-        rx_rfinfo_pkt.sensor.antenna.name = pkt.sensor.antenna.name;
-        rx_rfinfo_pkt.sensor.antenna.size = pkt.sensor.antenna.size;
-        rx_rfinfo_pkt.sensor.antenna.type = pkt.sensor.antenna.type;
-        rx_rfinfo_pkt.sensor.feed.name = pkt.sensor.feed.name;
-        rx_rfinfo_pkt.sensor.feed.polarization = pkt.sensor.feed.polarization;
-        rx_rfinfo_pkt.sensor.feed.freq_range.max_val = pkt.sensor.feed.freq_range.max_val;
-        rx_rfinfo_pkt.sensor.feed.freq_range.min_val = pkt.sensor.feed.freq_range.min_val;
-        rx_rfinfo_pkt.sensor.feed.freq_range.values.resize(pkt.sensor.feed.freq_range.values.size());
-        for (unsigned int i=0; i<pkt.sensor.feed.freq_range.values.size(); i++) {
-            rx_rfinfo_pkt.sensor.feed.freq_range.values[i] = pkt.sensor.feed.freq_range.values[i];
+    str2rfinfo_map_t::iterator rfinfo = rf_port_info_map.find(port_name);
+    if( rfinfo != rf_port_info_map.end()){
+        {
+            exclusive_lock lock(prop_lock);
+            rfinfo->second.rfinfo_pkt.rf_flow_id = pkt.rf_flow_id;
+            rfinfo->second.rfinfo_pkt.rf_center_freq = pkt.rf_center_freq;
+            rfinfo->second.rfinfo_pkt.rf_bandwidth = pkt.rf_bandwidth;
+            rfinfo->second.rfinfo_pkt.if_center_freq = pkt.if_center_freq;
+            rfinfo->second.rfinfo_pkt.spectrum_inverted = pkt.spectrum_inverted;
+            rfinfo->second.rfinfo_pkt.sensor.collector = pkt.sensor.collector;
+            rfinfo->second.rfinfo_pkt.sensor.mission = pkt.sensor.mission;
+            rfinfo->second.rfinfo_pkt.sensor.rx = pkt.sensor.rx;
+            rfinfo->second.rfinfo_pkt.sensor.antenna.description = pkt.sensor.antenna.description;
+            rfinfo->second.rfinfo_pkt.sensor.antenna.name = pkt.sensor.antenna.name;
+            rfinfo->second.rfinfo_pkt.sensor.antenna.size = pkt.sensor.antenna.size;
+            rfinfo->second.rfinfo_pkt.sensor.antenna.type = pkt.sensor.antenna.type;
+            rfinfo->second.rfinfo_pkt.sensor.feed.name = pkt.sensor.feed.name;
+            rfinfo->second.rfinfo_pkt.sensor.feed.polarization = pkt.sensor.feed.polarization;
+            rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.max_val = pkt.sensor.feed.freq_range.max_val;
+            rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.min_val = pkt.sensor.feed.freq_range.min_val;
+            rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.values.resize(pkt.sensor.feed.freq_range.values.size());
+            for (unsigned int i=0; i<pkt.sensor.feed.freq_range.values.size(); i++) {
+                rfinfo->second.rfinfo_pkt.sensor.feed.freq_range.values[i] = pkt.sensor.feed.freq_range.values[i];
+            }
         }
+        updateRfFlowId(port_name);
     } else {
         LOG_WARN(USRP_UHD_i, "set_rfinfo_pkt|Unknown port name: " << port_name);
     }

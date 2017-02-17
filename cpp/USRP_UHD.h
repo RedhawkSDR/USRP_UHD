@@ -192,9 +192,18 @@ struct usrpRangesStruct {
     };
 };
 
+struct rfinfoPortMappingStruct {
+    size_t tuner_idx;
+    std::string antenna;
+    frontend::RFInfoPkt rfinfo_pkt;
+};
+
 class USRP_UHD_i : public USRP_UHD_base
 {
     ENABLE_LOGGING
+    typedef std::pair<std::string, std::string*>           str2strptr_pair_t;
+    typedef std::map<std::string,rfinfoPortMappingStruct>  str2rfinfo_map_t;
+    typedef std::pair<std::string,rfinfoPortMappingStruct> str2rfinfo_pair_t;
     public:
         USRP_UHD_i(char *devMgr_ior, char *id, char *lbl, char *sftwrPrfl);
         USRP_UHD_i(char *devMgr_ior, char *id, char *lbl, char *sftwrPrfl, char *compDev);
@@ -267,11 +276,9 @@ class USRP_UHD_i : public USRP_UHD_base
         boost::mutex prop_lock;
 
         // global properties for all channels
-        frontend::RFInfoPkt rx_rfinfo_pkt;
-        frontend::RFInfoPkt tx_rfinfo_pkt;
-        void updateRxRfFlowId(std::string rf_flow_id);
-        void updateTxRfFlowId(std::string rf_flow_id);
-        void updateGroupId(std::string group);
+        str2rfinfo_map_t rf_port_info_map;
+        void updateRfFlowId(const std::string &port_name);
+        void updateGroupId(const std::string &group);
 
         // override base class functions
         void setNumChannels(size_t num_rx, size_t num_tx);
@@ -283,6 +290,7 @@ class USRP_UHD_i : public USRP_UHD_base
         void deviceTxGainChanged(float old_value, float new_value);
         void deviceReferenceSourceChanged(std::string old_value, std::string new_value);
         void deviceGroupIdChanged(std::string old_value, std::string new_value);
+        void antennaChanged(const configure_tuner_antenna_struct& old_value, const configure_tuner_antenna_struct& new_value);
 
         // additional bookkeeping for each channel
         std::vector<usrpRangesStruct> usrp_ranges; // freq/bw/sr/gain ranges supported by each tuner channel

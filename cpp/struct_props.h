@@ -177,6 +177,140 @@ inline bool operator!= (const target_device_struct& s1, const target_device_stru
     return !(s1==s2);
 }
 
+struct device_antenna_mapping_struct {
+    device_antenna_mapping_struct ()
+    {
+        RFInfo_in = "";
+        RFInfo_in2 = "";
+        RFInfo_in3 = "";
+        RFInfo_in4 = "";
+        RFInfoTX_out = "";
+        RFInfoTX_out2 = "";
+    };
+
+    static std::string getId() {
+        return std::string("device_antenna_mapping");
+    };
+
+    std::string RFInfo_in;
+    std::string RFInfo_in2;
+    std::string RFInfo_in3;
+    std::string RFInfo_in4;
+    std::string RFInfoTX_out;
+    std::string RFInfoTX_out2;
+};
+
+inline bool operator>>= (const CORBA::Any& a, device_antenna_mapping_struct& s) {
+    CF::Properties* temp;
+    if (!(a >>= temp)) return false;
+    const redhawk::PropertyMap& props = redhawk::PropertyMap::cast(*temp);
+    if (props.contains("device_antenna_mapping::RFInfo_in")) {
+        if (!(props["device_antenna_mapping::RFInfo_in"] >>= s.RFInfo_in)) return false;
+    }
+    if (props.contains("device_antenna_mapping::RFInfo_in2")) {
+        if (!(props["device_antenna_mapping::RFInfo_in2"] >>= s.RFInfo_in2)) return false;
+    }
+    if (props.contains("device_antenna_mapping::RFInfo_in3")) {
+        if (!(props["device_antenna_mapping::RFInfo_in3"] >>= s.RFInfo_in3)) return false;
+    }
+    if (props.contains("device_antenna_mapping::RFInfo_in4")) {
+        if (!(props["device_antenna_mapping::RFInfo_in4"] >>= s.RFInfo_in4)) return false;
+    }
+    if (props.contains("device_antenna_mapping::RFInfoTX_out")) {
+        if (!(props["device_antenna_mapping::RFInfoTX_out"] >>= s.RFInfoTX_out)) return false;
+    }
+    if (props.contains("device_antenna_mapping::RFInfoTX_out2")) {
+        if (!(props["device_antenna_mapping::RFInfoTX_out2"] >>= s.RFInfoTX_out2)) return false;
+    }
+    return true;
+}
+
+inline void operator<<= (CORBA::Any& a, const device_antenna_mapping_struct& s) {
+    redhawk::PropertyMap props;
+ 
+    props["device_antenna_mapping::RFInfo_in"] = s.RFInfo_in;
+ 
+    props["device_antenna_mapping::RFInfo_in2"] = s.RFInfo_in2;
+ 
+    props["device_antenna_mapping::RFInfo_in3"] = s.RFInfo_in3;
+ 
+    props["device_antenna_mapping::RFInfo_in4"] = s.RFInfo_in4;
+ 
+    props["device_antenna_mapping::RFInfoTX_out"] = s.RFInfoTX_out;
+ 
+    props["device_antenna_mapping::RFInfoTX_out2"] = s.RFInfoTX_out2;
+    a <<= props;
+}
+
+inline bool operator== (const device_antenna_mapping_struct& s1, const device_antenna_mapping_struct& s2) {
+    if (s1.RFInfo_in!=s2.RFInfo_in)
+        return false;
+    if (s1.RFInfo_in2!=s2.RFInfo_in2)
+        return false;
+    if (s1.RFInfo_in3!=s2.RFInfo_in3)
+        return false;
+    if (s1.RFInfo_in4!=s2.RFInfo_in4)
+        return false;
+    if (s1.RFInfoTX_out!=s2.RFInfoTX_out)
+        return false;
+    if (s1.RFInfoTX_out2!=s2.RFInfoTX_out2)
+        return false;
+    return true;
+}
+
+inline bool operator!= (const device_antenna_mapping_struct& s1, const device_antenna_mapping_struct& s2) {
+    return !(s1==s2);
+}
+
+struct configure_tuner_antenna_struct {
+    configure_tuner_antenna_struct ()
+    {
+        tuner_index = 0;
+        antenna = "";
+    };
+
+    static std::string getId() {
+        return std::string("configure_tuner_antenna");
+    };
+
+    CORBA::ULong tuner_index;
+    std::string antenna;
+};
+
+inline bool operator>>= (const CORBA::Any& a, configure_tuner_antenna_struct& s) {
+    CF::Properties* temp;
+    if (!(a >>= temp)) return false;
+    const redhawk::PropertyMap& props = redhawk::PropertyMap::cast(*temp);
+    if (props.contains("configure_tuner_antenna::tuner_id")) {
+        if (!(props["configure_tuner_antenna::tuner_id"] >>= s.tuner_index)) return false;
+    }
+    if (props.contains("configure_tuner_antenna::antenna")) {
+        if (!(props["configure_tuner_antenna::antenna"] >>= s.antenna)) return false;
+    }
+    return true;
+}
+
+inline void operator<<= (CORBA::Any& a, const configure_tuner_antenna_struct& s) {
+    redhawk::PropertyMap props;
+ 
+    props["configure_tuner_antenna::tuner_id"] = s.tuner_index;
+ 
+    props["configure_tuner_antenna::antenna"] = s.antenna;
+    a <<= props;
+}
+
+inline bool operator== (const configure_tuner_antenna_struct& s1, const configure_tuner_antenna_struct& s2) {
+    if (s1.tuner_index!=s2.tuner_index)
+        return false;
+    if (s1.antenna!=s2.antenna)
+        return false;
+    return true;
+}
+
+inline bool operator!= (const configure_tuner_antenna_struct& s1, const configure_tuner_antenna_struct& s2) {
+    return !(s1==s2);
+}
+
 struct frontend_tuner_status_struct_struct : public frontend::default_frontend_tuner_status_struct_struct {
     frontend_tuner_status_struct_struct () : frontend::default_frontend_tuner_status_struct_struct()
     {
@@ -186,6 +320,7 @@ struct frontend_tuner_status_struct_struct : public frontend::default_frontend_t
         return std::string("FRONTEND::tuner_status_struct");
     };
 
+    std::string antenna;
     std::string available_bandwidth;
     std::string available_frequency;
     std::string available_gain;
@@ -200,8 +335,10 @@ struct frontend_tuner_status_struct_struct : public frontend::default_frontend_t
     CORBA::Long reference_source;
     double sample_rate_tolerance;
     std::string stream_id;
+    CORBA::ULong tuner_index;
     short tuner_number;
     bool valid;
+    std::vector<std::string> available_antennas;
 };
 
 inline bool operator>>= (const CORBA::Any& a, frontend_tuner_status_struct_struct& s) {
@@ -210,6 +347,9 @@ inline bool operator>>= (const CORBA::Any& a, frontend_tuner_status_struct_struc
     const redhawk::PropertyMap& props = redhawk::PropertyMap::cast(*temp);
     if (props.contains("FRONTEND::tuner_status::allocation_id_csv")) {
         if (!(props["FRONTEND::tuner_status::allocation_id_csv"] >>= s.allocation_id_csv)) return false;
+    }
+    if (props.contains("FRONTEND::tuner_status::antenna")) {
+        if (!(props["FRONTEND::tuner_status::antenna"] >>= s.antenna)) return false;
     }
     if (props.contains("FRONTEND::tuner_status::available_bandwidth")) {
         if (!(props["FRONTEND::tuner_status::available_bandwidth"] >>= s.available_bandwidth)) return false;
@@ -271,6 +411,9 @@ inline bool operator>>= (const CORBA::Any& a, frontend_tuner_status_struct_struc
     if (props.contains("FRONTEND::tuner_status::stream_id")) {
         if (!(props["FRONTEND::tuner_status::stream_id"] >>= s.stream_id)) return false;
     }
+    if (props.contains("FRONTEND::tuner_status::tuner_index")) {
+        if (!(props["FRONTEND::tuner_status::tuner_index"] >>= s.tuner_index)) return false;
+    }
     if (props.contains("FRONTEND::tuner_status::tuner_number")) {
         if (!(props["FRONTEND::tuner_status::tuner_number"] >>= s.tuner_number)) return false;
     }
@@ -280,6 +423,9 @@ inline bool operator>>= (const CORBA::Any& a, frontend_tuner_status_struct_struc
     if (props.contains("FRONTEND::tuner_status::valid")) {
         if (!(props["FRONTEND::tuner_status::valid"] >>= s.valid)) return false;
     }
+    if (props.contains("FRONTEND::tuner_status::available_antennas")) {
+        if (!(props["FRONTEND::tuner_status::available_antennas"] >>= s.available_antennas)) return false;
+    }
     return true;
 }
 
@@ -287,6 +433,8 @@ inline void operator<<= (CORBA::Any& a, const frontend_tuner_status_struct_struc
     redhawk::PropertyMap props;
  
     props["FRONTEND::tuner_status::allocation_id_csv"] = s.allocation_id_csv;
+ 
+    props["FRONTEND::tuner_status::antenna"] = s.antenna;
  
     props["FRONTEND::tuner_status::available_bandwidth"] = s.available_bandwidth;
  
@@ -328,16 +476,22 @@ inline void operator<<= (CORBA::Any& a, const frontend_tuner_status_struct_struc
  
     props["FRONTEND::tuner_status::stream_id"] = s.stream_id;
  
+    props["FRONTEND::tuner_status::tuner_index"] = s.tuner_index;
+ 
     props["FRONTEND::tuner_status::tuner_number"] = s.tuner_number;
  
     props["FRONTEND::tuner_status::tuner_type"] = s.tuner_type;
  
     props["FRONTEND::tuner_status::valid"] = s.valid;
+ 
+    props["FRONTEND::tuner_status::available_antennas"] = s.available_antennas;
     a <<= props;
 }
 
 inline bool operator== (const frontend_tuner_status_struct_struct& s1, const frontend_tuner_status_struct_struct& s2) {
     if (s1.allocation_id_csv!=s2.allocation_id_csv)
+        return false;
+    if (s1.antenna!=s2.antenna)
         return false;
     if (s1.available_bandwidth!=s2.available_bandwidth)
         return false;
@@ -379,11 +533,15 @@ inline bool operator== (const frontend_tuner_status_struct_struct& s1, const fro
         return false;
     if (s1.stream_id!=s2.stream_id)
         return false;
+    if (s1.tuner_index!=s2.tuner_index)
+        return false;
     if (s1.tuner_number!=s2.tuner_number)
         return false;
     if (s1.tuner_type!=s2.tuner_type)
         return false;
     if (s1.valid!=s2.valid)
+        return false;
+    if (s1.available_antennas!=s2.available_antennas)
         return false;
     return true;
 }
@@ -596,6 +754,7 @@ struct usrp_channel_struct {
     double gain_max;
     double clock_min;
     double clock_max;
+    std::vector<std::string> available_antennas;
 };
 
 inline bool operator>>= (const CORBA::Any& a, usrp_channel_struct& s) {
@@ -656,6 +815,9 @@ inline bool operator>>= (const CORBA::Any& a, usrp_channel_struct& s) {
     if (props.contains("device_channels::clock_max")) {
         if (!(props["device_channels::clock_max"] >>= s.clock_max)) return false;
     }
+    if (props.contains("device_channels::available_antennas")) {
+        if (!(props["device_channels::available_antennas"] >>= s.available_antennas)) return false;
+    }
     return true;
 }
 
@@ -697,6 +859,8 @@ inline void operator<<= (CORBA::Any& a, const usrp_channel_struct& s) {
     props["device_channels::clock_min"] = s.clock_min;
  
     props["device_channels::clock_max"] = s.clock_max;
+ 
+    props["device_channels::available_antennas"] = s.available_antennas;
     a <<= props;
 }
 
@@ -736,6 +900,8 @@ inline bool operator== (const usrp_channel_struct& s1, const usrp_channel_struct
     if (s1.clock_min!=s2.clock_min)
         return false;
     if (s1.clock_max!=s2.clock_max)
+        return false;
+    if (s1.available_antennas!=s2.available_antennas)
         return false;
     return true;
 }

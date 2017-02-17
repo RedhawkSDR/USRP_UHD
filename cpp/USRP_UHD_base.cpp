@@ -61,6 +61,12 @@ USRP_UHD_base::~USRP_UHD_base()
 {
     delete RFInfo_in;
     RFInfo_in = 0;
+    delete RFInfo_in2;
+    RFInfo_in2 = 0;
+    delete RFInfo_in3;
+    RFInfo_in3 = 0;
+    delete RFInfo_in4;
+    RFInfo_in4 = 0;
     delete DigitalTuner_in;
     DigitalTuner_in = 0;
     delete dataShortTX_in;
@@ -71,6 +77,8 @@ USRP_UHD_base::~USRP_UHD_base()
     dataShort_out = 0;
     delete RFInfoTX_out;
     RFInfoTX_out = 0;
+    delete RFInfoTX_out2;
+    RFInfoTX_out2 = 0;
     delete dataSDDS_out;
     dataSDDS_out = 0;
 }
@@ -80,7 +88,13 @@ void USRP_UHD_base::construct()
     loadProperties();
 
     RFInfo_in = new frontend::InRFInfoPort("RFInfo_in", this);
-    addPort("RFInfo_in", RFInfo_in);
+    addPort("RFInfo_in", "First RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.", RFInfo_in);
+    RFInfo_in2 = new frontend::InRFInfoPort("RFInfo_in2", this);
+    addPort("RFInfo_in2", "Second RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.", RFInfo_in2);
+    RFInfo_in3 = new frontend::InRFInfoPort("RFInfo_in3", this);
+    addPort("RFInfo_in3", "Third RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.\n\nNote: The third and fourth RFInfo_in ports are not used when the USRP hardware only has two RF input connectors.", RFInfo_in3);
+    RFInfo_in4 = new frontend::InRFInfoPort("RFInfo_in4", this);
+    addPort("RFInfo_in4", "Fourth RF RX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.\n\nNote: The third and fourth RFInfo_in ports are not used when the USRP hardware only has two RF input connectors.", RFInfo_in4);
     DigitalTuner_in = new frontend::InDigitalTunerPort("DigitalTuner_in", this);
     addPort("DigitalTuner_in", DigitalTuner_in);
     dataShortTX_in = new bulkio::InShortPort("dataShortTX_in");
@@ -90,7 +104,9 @@ void USRP_UHD_base::construct()
     dataShort_out = new bulkio::OutShortPort("dataShort_out");
     addPort("dataShort_out", dataShort_out);
     RFInfoTX_out = new frontend::OutRFInfoPort("RFInfoTX_out");
-    addPort("RFInfoTX_out", RFInfoTX_out);
+    addPort("RFInfoTX_out", "First RF TX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.", RFInfoTX_out);
+    RFInfoTX_out2 = new frontend::OutRFInfoPort("RFInfoTX_out2");
+    addPort("RFInfoTX_out2", "Second RF TX connector on USRP. See `device_antenna_mapping` Property to see mapping of which antenna each RFInfo port represents.\n\nNote: The second RFInfo_out ports are not used when the USRP hardware only has one RF TX connectors.", RFInfoTX_out2);
     dataSDDS_out = new bulkio::OutSDDSPort("dataSDDS_out");
     addPort("dataSDDS_out", dataSDDS_out);
 
@@ -213,6 +229,24 @@ void USRP_UHD_base::loadProperties()
                 target_device_struct(),
                 "target_device",
                 "target_device",
+                "readwrite",
+                "",
+                "external",
+                "property");
+
+    addProperty(device_antenna_mapping,
+                device_antenna_mapping_struct(),
+                "device_antenna_mapping",
+                "device_antenna_mapping",
+                "readonly",
+                "",
+                "external",
+                "property");
+
+    addProperty(configure_tuner_antenna,
+                configure_tuner_antenna_struct(),
+                "configure_tuner_antenna",
+                "configure_tuner_antenna",
                 "readwrite",
                 "",
                 "external",

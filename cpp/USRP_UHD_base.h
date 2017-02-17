@@ -77,6 +77,10 @@ class USRP_UHD_base : public frontend::FrontendTunerDevice<frontend_tuner_status
         sdds_settings_struct sdds_settings;
         /// Property: target_device
         target_device_struct target_device;
+        /// Property: device_antenna_mapping
+        device_antenna_mapping_struct device_antenna_mapping;
+        /// Property: configure_tuner_antenna
+        configure_tuner_antenna_struct configure_tuner_antenna;
         /// Property: sdds_network_settings
         std::vector<sdds_network_settings_struct_struct> sdds_network_settings;
         /// Property: available_devices
@@ -91,6 +95,12 @@ class USRP_UHD_base : public frontend::FrontendTunerDevice<frontend_tuner_status
         // Ports
         /// Port: RFInfo_in
         frontend::InRFInfoPort *RFInfo_in;
+        /// Port: RFInfo_in2
+        frontend::InRFInfoPort *RFInfo_in2;
+        /// Port: RFInfo_in3
+        frontend::InRFInfoPort *RFInfo_in3;
+        /// Port: RFInfo_in4
+        frontend::InRFInfoPort *RFInfo_in4;
         /// Port: DigitalTuner_in
         frontend::InDigitalTunerPort *DigitalTuner_in;
         /// Port: dataShortTX_in
@@ -101,6 +111,8 @@ class USRP_UHD_base : public frontend::FrontendTunerDevice<frontend_tuner_status
         bulkio::OutShortPort *dataShort_out;
         /// Port: RFInfoTX_out
         frontend::OutRFInfoPort *RFInfoTX_out;
+        /// Port: RFInfoTX_out2
+        frontend::OutRFInfoPort *RFInfoTX_out2;
         /// Port: dataSDDS_out
         bulkio::OutSDDSPort *dataSDDS_out;
 
