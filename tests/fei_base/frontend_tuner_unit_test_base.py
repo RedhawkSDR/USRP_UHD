@@ -2121,8 +2121,28 @@ class FrontendTunerTests(unittest.TestCase):
             self.check(False,True,'%s.setTunerEnable called with bad alloc_id produces FrontendException (no exception)'%(port_name))
 
         
+    def testFRONTEND_3_4_DataFlow1(self):
+        ''' RX_DIG 4 DataFlow - First Port
+        '''
+        self._testFRONTEND_3_4_DataFlow(1)
+
+    def testFRONTEND_3_4_DataFlow2(self):
+        ''' RX_DIG 4 DataFlow - Second Port
+        '''
+        self._testFRONTEND_3_4_DataFlow(2)
+
+    def testFRONTEND_3_4_DataFlow3(self):
+        ''' RX_DIG 4 DataFlow - Third Port
+        '''
+        self._testFRONTEND_3_4_DataFlow(3)
+
+    def testFRONTEND_3_4_DataFlow4(self):
+        ''' RX_DIG 4 DataFlow - Fourth Port
+        '''
+        self._testFRONTEND_3_4_DataFlow(4)
+
     # TODO - noseify
-    def testFRONTEND_3_4_DataFlow(self):
+    def _testFRONTEND_3_4_DataFlow(self, port_num):
         ''' RX_DIG 4 DataFlow
         '''
 
@@ -2136,13 +2156,18 @@ class FrontendTunerTests(unittest.TestCase):
 
         tuner_control = self.dut.getPort('DigitalTuner_in')
         scd = SCDParser.parse(self.scd_file)
+        count = 0
         for port in sorted(self.scd.get_componentfeatures().get_ports().get_uses(),reverse=True):
             comp_port_type = port.get_repid().split(':')[1].split('/')[-1]
             comp_port_name = port.get_usesname()
             if comp_port_type in self.port_map:
-                self._testBULKIO(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
+                count += 1
+                if count == port_num:
+                    self._testBULKIO(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
             elif comp_port_type == "dataSDDS":
-                self._testSDDS(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
+                count += 1
+                if count == port_num:
+                    self._testSDDS(tuner_control,comp_port_name,comp_port_type,ttype,controller,listener1,listener2)
             else:
                 print 'WARNING - skipping %s port named %s, not supported BULKIO port type'%(comp_port_type,comp_port_name)
                 continue
