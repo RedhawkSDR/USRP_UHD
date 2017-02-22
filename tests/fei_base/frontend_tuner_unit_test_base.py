@@ -2303,7 +2303,7 @@ class FrontendTunerTests(unittest.TestCase):
         comp_port_obj.connectPort(dataSink1_port_obj, controller['ALLOC_ID'])
         self.dut_ref.allocateCapacity(tAlloc)
 
-        time.sleep(0.1)
+        time.sleep(4)
         
         sri1 = dataSink1._sink.sri
         if not sri1:
