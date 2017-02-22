@@ -2367,7 +2367,10 @@ class FrontendTunerTests(unittest.TestCase):
         attachmentID = attachmentIDs[0]
         sddsStreamDef1 = attachments[attachmentID][0]
         
-        self.checkAlmostEqual(status['FRONTEND::tuner_status::sample_rate'], sddsStreamDef1.sampleRate, '%s: Attach SampleRate has correct value'%(comp_port_name),places=0)
+        # Sample rate is stored as a double in frontend tuner status, but as an
+        # unsigned long in the SDDS Stream Definition, so we cast to long here.
+        #print 'srate: fts:', status['FRONTEND::tuner_status::sample_rate'], ' fts rounded:', long(status['FRONTEND::tuner_status::sample_rate']+.5), ' sdds:', sddsStreamDef1.sampleRate
+        self.check(long(status['FRONTEND::tuner_status::sample_rate']+.5), sddsStreamDef1.sampleRate, '%s: Attach SampleRate has correct value'%(comp_port_name))
         self.check(status['FRONTEND::tuner_status::output_multicast'], sddsStreamDef1.multicastAddress, '%s: Attach multicast Address has correct value'%(comp_port_name))
         self.check(status['FRONTEND::tuner_status::output_vlan'], sddsStreamDef1.vlan, '%s: Attach vlan has correct value'%(comp_port_name))
         self.check(status['FRONTEND::tuner_status::output_port'], sddsStreamDef1.port, '%s: Attach port has correct value'%(comp_port_name))
