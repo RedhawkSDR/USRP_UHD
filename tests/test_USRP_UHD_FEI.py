@@ -56,7 +56,12 @@ if 'USRP' in DUT:
                                        'target::serial':'',
                                        'target::ip_address':'',
                                        'target::type':DUT.split('|')[1]},
-                      'device_group_id_global':'FEI_UNIT_TESTING'
+                      'device_group_id_global':'FEI_UNIT_TESTING',
+                      'sdds_network_settings':[{'sdds_network_settings::interface':'lo',
+                                                'sdds_network_settings::ip_address':'127.0.0.1',
+                                                'sdds_network_settings::port':29495,
+                                                'sdds_network_settings::vlan':0}
+                                               ]
                      }
 
     # UHD 3.5.3
