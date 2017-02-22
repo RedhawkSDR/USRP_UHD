@@ -50,12 +50,12 @@ The report statistics may differ depending on the daughtercards present in the U
 
 ```
 Report Statistics:
-   Checks that returned "WARN" .................. 1
+   Checks that returned "WARN" .................. 4
    Checks that returned "info" .................. 1
-   Checks that returned "no" .................... 6
-   Checks that returned "ok" .................... 222
+   Checks that returned "no" .................... 2
+   Checks that returned "ok" .................... 257
    Checks with silent results ................... 38
-   Total checks made ............................ 268
+   Total checks made ............................ 302
 ```
 
 * `FAIL` indicates the test failed. It may be acceptable to fail a test depending on the device/design. There should be no failures for rh.USRP_UHD.
@@ -76,7 +76,10 @@ dataShort_out: Cannot fully test multiport because only single
 
 ### `WARN` Details
 
-The single `WARN` check is reporting that an unknown field was found in the tuner status, which is permitted. The reason is it a warning is to call extra attention in case the unknown (user defined) property could be modified to one of the many pre-defined optional fields also reported in the test.
+The four `WARN` checks are reporting that unknown fields were found in the tuner status, which is permitted. The reason it is a warning is to call extra attention in case the unknown (user defined) property could be modified to one of the many pre-defined optional fields also reported in the test.
 ```
+tuner_status has UNKNOWN field FRONTEND::tuner_status::antenna..............WARN
+tuner_status has UNKNOWN field FRONTEND::tuner_status::tuner_index..........WARN
+tuner_status has UNKNOWN field FRONTEND::tuner_status::available_antennas...WARN
 tuner_status has UNKNOWN field FRONTEND::tuner_status::stream_id............WARN
 ```
