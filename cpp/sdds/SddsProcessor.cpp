@@ -565,7 +565,8 @@ void SddsProcessor<DATA_TYPE>::callAttach(BULKIO::dataSDDS::_ptr_type sdds_input
     }
 
     // SDDS StreamDef has sample rate as an unsigned long, so we round to nearest integer
-    sdef.sampleRate = (unsigned long) (1.0/sri.xdelta+0.5);
+    double tmp_sr = 1.0/sri.xdelta+0.5; // Needs to be 2 steps to prevent math errors on 32-bit systems
+    sdef.sampleRate = (unsigned long) tmp_sr;
     sdef.timeTagValid = (m_metadata.timestamp().tcstatus == BULKIO::TCS_VALID);
     sdef.multicastAddress = CORBA::string_dup(inet_ntoa(m_connection.addr.sin_addr));
     sdef.vlan = m_vlan;
