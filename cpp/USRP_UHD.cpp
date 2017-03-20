@@ -562,7 +562,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
                 }
             } catch(FRONTEND::BadParameterException& e){
                 LOG_INFO(USRP_UHD_i,"deviceSetTuning|BadParameterException - " << e.msg);
-                throw;
+                return false;
             }
 
             // calculate if_offset according to rx rfinfo packet
@@ -668,7 +668,7 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
                 }
             } catch(FRONTEND::BadParameterException& e){
                 LOG_INFO(USRP_UHD_i,"deviceSetTuning|BadParameterException - " << e.msg);
-                throw;
+                return false;
             }
 
             // calculate if_offset according to tx rfinfo packet
