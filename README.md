@@ -22,6 +22,7 @@ latest unreleased development code for the latest released version.
 
 | Asset Version | Minimum REDHAWK Version Required |
 | ------------- | -------------------------------- |
+| 5.x           | 2.0                              |
 | 4.x           | 2.0                              |
 | 3.x           | 1.10                             |
 | 2.x           | 1.8                              |
@@ -32,6 +33,12 @@ This asset requires the uhd library, which must be installed in order to build
 and run this asset. To build from source, run the `build.sh` script found at the
 top level directory. To install to $SDRROOT, run `build.sh install`. Note: root
 privileges (`sudo`) may be required to install.
+
+## Hardware Compatibility Notes
+
+UHD 3.7.3 is the latest version of the UHD driver tested and packaged with
+REDHAWK. In order to target a USRP X310 device, the X310 firmware must be
+version 3.0, not 4.0 or later.
 
 ## FEI Compliance Test Results
 
