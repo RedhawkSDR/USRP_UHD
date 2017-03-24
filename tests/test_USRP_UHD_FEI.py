@@ -35,6 +35,13 @@ dut_config = {}
       device under test.
   4)  Set DEBUG_LEVEL, DUT_*, or MCAST_* if desired and applicable.
   5)  Advanced: Override functions with device specific behavior.
+
+  NOTE: When testing the USRP_UHD it is possible for the test to freeze due to
+        saturating the network connection to the USRP hardware. This is
+        is especially true when testing using a virtual machine. To avoid this,
+        set the `sr_limit` key in the dut_config struct to the maximum sample
+        rate the test should attempt. This must be a valid sample rate for the
+        DUT.
 '''
 
 #******* MODIFY CONFIG BELOW **********#
