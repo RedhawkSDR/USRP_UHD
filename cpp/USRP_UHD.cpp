@@ -975,8 +975,10 @@ void USRP_UHD_i::antennaChanged(const configure_tuner_antenna_struct& old_value,
     if (antenna == frontend_tuner_status[idx].antenna)
         return;
 
+    // Make some updates...
+    scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
+
     // Make the change and update antenna value
-    //TODO - need a lock?
     if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
         usrp_device_ptr->set_rx_antenna(antenna, frontend_tuner_status[idx].tuner_number);
         frontend_tuner_status[idx].antenna =
@@ -993,6 +995,7 @@ void USRP_UHD_i::antennaChanged(const configure_tuner_antenna_struct& old_value,
         if (it->second.tuner_idx == idx
                 && it->second.antenna == frontend_tuner_status[idx].antenna) {
             frontend_tuner_status[idx].rf_flow_id = it->second.rfinfo_pkt.rf_flow_id;
+            usrp_tuners[idx].update_sri = true;
             break;
         }
     }
