@@ -98,3 +98,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_prefix}/dev/devices/rh/USRP_UHD/USRP_UHD.spd.xml
 %{_prefix}/dev/devices/rh/USRP_UHD/cpp
 
+%changelog
+* Wed Jun 21 2017 Ryan Bauman <rbauman@lgsinnovations.com> - 5.0.0-7
+- Mass rebuild for REDHAWK 2.1.1
+
