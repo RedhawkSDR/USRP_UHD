@@ -2647,6 +2647,29 @@ class FrontendTunerTests(unittest.TestCase):
             else:
                 self.check(None, status, 'listener allocation id removed from tuner status after deallocation of controller')
 
+    def testFRONTENDAllocationPropertiesWriteOnly(self):
+        
+        tuner_allocation = CF.DataType(id='FRONTEND::tuner_allocation',value=any.to_any(None))
+        listener_allocation = CF.DataType(id='FRONTEND::listener_allocation',value=any.to_any(None))
+
+        try:
+            result = self.dut_ref.query([tuner_allocation])
+        except CF.UnknownProperties:
+            self.check(True, True, 'Query of Tuner Allocation Property throws expected exception')
+        except Exception, e:
+            self.check(False, True, 'Query of Tuner Allocation Property throws unexpected exception')
+        else:
+            self.check(False, True, 'Query of Tuner Allocation Property does not throw expected exception')
+
+        try:
+            result = self.dut_ref.query([listener_allocation])
+        except CF.UnknownProperties:
+            self.check(True, True, 'Query of Listener Allocation Property throws expected exception')
+        except Exception, e:
+            self.check(False, True, 'Query of Listener Allocation Property throws unexpected exception')
+        else:
+            self.check(False, True, 'Query of Listener Allocation Property does not throw expected exception')
+
     @classmethod
     def printTestReport(self):
         sys.stderr.writelines(self.testReport)
