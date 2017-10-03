@@ -389,11 +389,13 @@ class FrontendTunerTests(fe.FrontendTunerTests):
             for chan in device_channels:
                 if chan['device_channels::tuner_type'] != 'RX_DIGITIZER':
                     continue
+                minbw = min([chan['device_channels::rate_min'],chan['device_channels::bandwidth_min']])
+                maxbw = min([chan['device_channels::rate_max'],chan['device_channels::bandwidth_max']])
                 chan_capabilities = {
                     chan['device_channels::tuner_type']: {
                         'COMPLEX' : True,
                         'CF'      : [chan['device_channels::freq_min'], chan['device_channels::freq_max']],
-                        'BW'      : [chan['device_channels::bandwidth_min'], chan['device_channels::bandwidth_max']],
+                        'BW'      : [minbw, maxbw],
                         'SR'      : [chan['device_channels::rate_min'], chan['device_channels::rate_max']],
                         'GAIN'    : [chan['device_channels::gain_min'], chan['device_channels::gain_max']]
                     }

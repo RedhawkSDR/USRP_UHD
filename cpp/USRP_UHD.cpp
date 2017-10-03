@@ -569,8 +569,13 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             if(frontend::floatingPointCompare(it->second.rfinfo_pkt.if_center_freq,0) > 0){
                 if_offset = it->second.rfinfo_pkt.rf_center_freq-it->second.rfinfo_pkt.if_center_freq;
             }
-
-            opt_sr = optimizeRate(request.sample_rate, tuner_id);
+            // If sample rate is zero (don't care) then use bandwidth for tuner request
+            if(frontend::floatingPointCompare(request.sample_rate,0) <= 0) {
+            	opt_sr = optimizeRate(request.bandwidth, tuner_id);
+            	LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|sr requested 0|opt_sr="<<opt_sr<<"  requested_bw="<<request.bandwidth)
+            } else {
+			    opt_sr = optimizeRate(request.sample_rate, tuner_id);
+            }
             opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
             LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|opt_sr="<<opt_sr<<"  opt_bw="<<opt_bw)
 
@@ -602,18 +607,22 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
         usrp_device_ptr->set_rx_bandwidth(opt_bw, fts.tuner_number);
         usrp_device_ptr->set_rx_rate(opt_sr, fts.tuner_number);
 
+
         // update frontend_tuner_status with actual hw values
         fts.center_frequency = usrp_device_ptr->get_rx_freq(fts.tuner_number)+if_offset;
         fts.bandwidth = usrp_device_ptr->get_rx_bandwidth(fts.tuner_number);
         fts.sample_rate = usrp_device_ptr->get_rx_rate(fts.tuner_number);
+
+        // bandwidth will be reported as the minimum of analog filter bandwidth and the sample rate.
+        fts.bandwidth =std::min(fts.sample_rate,fts.bandwidth);
 
         // update tolerance
         fts.bandwidth_tolerance = request.bandwidth_tolerance;
         fts.sample_rate_tolerance = request.sample_rate_tolerance;
 
         LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|requested center frequency "<<request.center_frequency<<" and got "<<fts.center_frequency<<" (if_offset="<<if_offset<<")");
-        LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|requested sample rate "<<opt_sr<<" and got "<<fts.sample_rate<<" (tolerance="<<fts.sample_rate_tolerance<<")");
-        LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|requested bandwidth "<<opt_bw<<" and got "<<fts.bandwidth<<" (tolerance="<<fts.bandwidth_tolerance<<")");
+        LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|requested sample rate "<<request.sample_rate<<" and got "<<fts.sample_rate<<" (tolerance="<<fts.sample_rate_tolerance<<")");
+        LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|requested bandwidth: "<<request.bandwidth<<" and got "<<fts.bandwidth<<" (tolerance="<<fts.bandwidth_tolerance<<")");
 
         // creates a stream id if not already created for this tuner
         std::string stream_id = getStreamId(tuner_id);
@@ -1302,10 +1311,14 @@ void USRP_UHD_i::initUsrp() throw (CF::PropertySet::InvalidConfiguration) {
             else
                 sprintf(tmp,"%.2f",device_channels[tuner_id].rate_min);
             frontend_tuner_status[tuner_id].available_sample_rate = std::string(tmp);
-            if( frontend::floatingPointCompare(device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].bandwidth_max) < 0 )
-                sprintf(tmp,"%.2f-%.2f",device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].bandwidth_max);
+
+            // Reported Available Bandwidth is a minimum of hte device reported analog bandwidth and the complex sample rate
+            float bandwidth_min = std::min(device_channels[tuner_id].bandwidth_min,device_channels[tuner_id].rate_min);
+            float bandwidth_max = std::min(device_channels[tuner_id].bandwidth_max,device_channels[tuner_id].rate_max);
+            if( frontend::floatingPointCompare(bandwidth_min,bandwidth_max) < 0 )
+                sprintf(tmp,"%.2f-%.2f",bandwidth_min,bandwidth_max);
             else
-                sprintf(tmp,"%.2f",device_channels[tuner_id].bandwidth_min);
+                sprintf(tmp,"%.2f",bandwidth_min);
             frontend_tuner_status[tuner_id].available_bandwidth = std::string(tmp);
 
             // init SDDS-related fields
@@ -2053,74 +2066,7 @@ double USRP_UHD_i::getTunerCenterFrequency(const std::string& allocation_id) {
 }
 void USRP_UHD_i::setTunerBandwidth(const std::string& allocation_id, double bw) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
-
-    long idx = getTunerMapping(allocation_id);
-    if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
-    if(allocation_id != getControlAllocationId(idx)){
-        std::ostringstream msg;
-        msg << "setTunerBandwidth|ID (" << allocation_id << ") does not have authorization to modify tuner.";
-        LOG_WARN(USRP_UHD_i,msg.str());
-        throw FRONTEND::FrontendException(msg.str().c_str());
-    }
-    try {
-        double opt_bw = bw;
-        try {
-            exclusive_lock lock(prop_lock);
-
-            if (frontend::floatingPointCompare(bw,0.0) < 0 ||
-                    frontend::floatingPointCompare(bw,device_channels[idx].bandwidth_max) > 0 ){
-                std::ostringstream msg;
-                msg << "setTunerBandwidth|Invalid bandwidth (" << bw <<")";
-                LOG_WARN(USRP_UHD_i,msg.str());
-                throw FRONTEND::BadParameterException(msg.str().c_str());
-            }
-            opt_bw = optimizeBandwidth(bw, idx);
-        } catch (FRONTEND::BadParameterException) {
-            throw;
-        } catch (...) {
-            std::ostringstream msg;
-            msg << "setTunerBandwidth|Could not retrieve tuner_id to usrp channel number mapping";
-            LOG_ERROR(USRP_UHD_i, msg.str());
-            throw FRONTEND::FrontendException(msg.str().c_str());
-        }
-
-        if (frontend_tuner_status[idx].tuner_type == "RX_DIGITIZER") {
-
-            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
-
-            // set hw with new value
-            usrp_device_ptr->set_rx_bandwidth(opt_bw, frontend_tuner_status[idx].tuner_number);
-
-            // update status from hw
-            frontend_tuner_status[idx].bandwidth = usrp_device_ptr->get_rx_bandwidth(frontend_tuner_status[idx].tuner_number);
-            usrp_tuners[idx].update_sri = true;
-
-        } else if (frontend_tuner_status[idx].tuner_type == "TX") {
-
-            scoped_tuner_lock tuner_lock(usrp_tuners[idx].lock);
-
-            // set hw with new value
-            usrp_device_ptr->set_tx_bandwidth(opt_bw, frontend_tuner_status[idx].tuner_number);
-
-            // update status from hw
-            frontend_tuner_status[idx].bandwidth = usrp_device_ptr->get_tx_bandwidth(frontend_tuner_status[idx].tuner_number);
-
-        } else {
-            std::ostringstream msg;
-            msg << "setTunerBandwidth|Invalid tuner type. Must be RX_DIGITIZER or TX";
-            LOG_ERROR(USRP_UHD_i,msg.str());
-            throw FRONTEND::BadParameterException(msg.str().c_str());
-        }
-
-    } catch (std::exception& e) {
-        std::ostringstream msg;
-        msg << "setTunerBandwidth|Exception: " << e.what();
-        LOG_WARN(USRP_UHD_i,msg.str());
-        throw FRONTEND::FrontendException(msg.str().c_str());
-    }
-
-    exclusive_lock lock(prop_lock);
-    updateDeviceInfo();
+    throw FRONTEND::NotSupportedException("setTunerBandwidth is not supported. Adjusting the sample rate will automatically adjust the bandwidth as appropriate, but the effective bandwidth cannot be controlled independently");
 }
 double USRP_UHD_i::getTunerBandwidth(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
@@ -2227,6 +2173,8 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
 
             // update status from hw
             frontend_tuner_status[idx].sample_rate = usrp_device_ptr->get_rx_rate(frontend_tuner_status[idx].tuner_number);
+            // Update Bandwidth from SR and BW.
+            frontend_tuner_status[idx].bandwidth = std::min(frontend_tuner_status[idx].sample_rate,usrp_device_ptr->get_rx_bandwidth(frontend_tuner_status[idx].tuner_number));
             LOG_DEBUG(USRP_UHD_i,"setTunerOutputSampleRate|REQ_SR=" << sr << " OPT_SR=" << opt_sr << " TUNER_SR=" << frontend_tuner_status[idx].sample_rate);
             usrp_tuners[idx].update_sri = true;
 
