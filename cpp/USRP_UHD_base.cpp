@@ -293,6 +293,23 @@ void USRP_UHD_base::loadProperties()
                 "",
                 "external",
                 "property");
+    addProperty(rx_autogain_on_tune,
+                false,
+                "rx_autogain_on_tune",
+                "rx_autogain_on_tune",
+                "readwrite",
+                "",
+                "external",
+                "property");
+    addProperty(trigger_rx_autogain,
+                false,
+                "trigger_rx_autogain",
+                "trigger_rx_autogain",
+                "readwrite",
+                "",
+                "external",
+                "property");
+
 
 }
 

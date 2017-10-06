@@ -491,4 +491,16 @@ False: Does not need control and can just attach to any currently tasked device 
     </simple>
     <configurationkind kindtype="allocation"/>
   </struct>
+  <simple id="rx_autogain_on_tune" mode="readwrite" name="rx_autogain_on_tune" type="boolean">
+    <description>If true the device will check in the input receive levels and set the hardware device gain appropriately when a new tuner is allocated or adjusted. </description>
+    <value>false</value>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
+  <simple id="trigger_rx_autogain" mode="readwrite" name="trigger_rx_autogain" type="boolean">
+    <description>Setting to true will trigger an auto gain calculation where the input levels will be monitored and the hardware gain will be adjusted. After this operation the property will be set back to false. </description>
+    <value>false</value>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
 </properties>

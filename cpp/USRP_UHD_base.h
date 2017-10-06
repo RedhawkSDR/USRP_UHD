@@ -69,6 +69,10 @@ class USRP_UHD_base : public frontend::FrontendTunerDevice<frontend_tuner_status
         std::string device_rx_mode;
         /// Property: device_tx_gain_global
         float device_tx_gain_global;
+		/// Property: trigger_rx_autogain
+		bool trigger_rx_autogain;
+        /// Property: rx_autogain_on_tune
+		bool rx_autogain_on_tune;
         /// Property: device_tx_mode
         std::string device_tx_mode;
         /// Property: update_available_devices

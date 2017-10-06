@@ -22,7 +22,7 @@
 
 #include "USRP_UHD_base.h"
 #include "port_impl_customized.h"
-
+#include <math.h>
 #include <uhd/usrp/multi_usrp.hpp>
 
 
@@ -239,6 +239,7 @@ class USRP_UHD_i : public USRP_UHD_base
         void setTunerEnable(const std::string& allocation_id, bool enable);
         double getTunerOutputSampleRate(const std::string& allocation_id);
         void setTunerOutputSampleRate(const std::string& allocation_id, double sr);
+        float auto_gain();
 
     private:
         // Custom SDDS port
@@ -317,7 +318,7 @@ class USRP_UHD_i : public USRP_UHD_base
         void updateAvailableDevices();
         void initUsrp() throw (CF::PropertySet::InvalidConfiguration);
         void updateDeviceInfo();
-        void updateDeviceRxGain(double gain);
+        void updateDeviceRxGain(double gain,bool lock=true);
         void updateDeviceTxGain(double gain);
         void updateDeviceReferenceSource(std::string source);
         long usrpReceive(size_t tuner_id, double timeout = 0.0);
