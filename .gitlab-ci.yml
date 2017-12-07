@@ -42,6 +42,7 @@ before_script:
   #Skip on tag of following format
   except:
     - /^(\d+\.)?(\d+)?(\.\d+)$/
+    - /^.*-external$/
     - master
 
 package:el6:rh2.0:
@@ -117,4 +118,5 @@ deploy:
   #Skip on tag of following format
   except:
     - /^(\d+\.)?(\d+)?(\.\d+)$/
+    - /^.*-external$/
     - master
