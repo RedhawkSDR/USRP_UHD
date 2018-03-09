@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see http://www.gnu.org/licenses/.
 
-import os, sys, copy
+import os, sys, copy, time
 script_dir = os.path.dirname(os.path.abspath(__file__))
 lib_dir = os.path.join(script_dir, 'fei_base')
 sys.path.append(lib_dir)
@@ -57,6 +57,15 @@ MCAST_GROUP = None
 MCAST_PORT = None
 MCAST_VLAN = None
 MCAST_IFACE = None
+
+# The following default values will result in a delay being added only when
+# necessary. Setting to 0 or False will prevent a delay, setting to any other
+# delay number will change the delay only when necessary, and setting ADD_* to
+# True or False will force delay to be added or skipped. Delay is only known to
+# be needed for USRP X310 when used with UHD 3.10 or greater due to the hardware
+# not being available quick enough after a test for the next test.
+DELAY_BT_TESTS = 10.0 # Seconds of delay between unit tests if ADD_DELAY_BT_TESTS
+ADD_DELAY_BT_TESTS = None # None=added if needed; True=added; False=not added
 
 # Your custom device
 dut_config['custom'] = {
@@ -348,6 +357,32 @@ def customGenerateTunerRequest(idx=0):
 #dut_config['custom']['tuner_gen']=customGenerateTunerRequest # TODO - uncomment this line to use custom
                                                               #        function for custom DUT
 
+# UHD 3.10 introduced an issue where the usrp is slow to become available after release
+# which causes unit tests to fail. Introducing a sleep 10 second sleep here solves that
+# issue, but makes the test take about 12 minutes longer. It's already ridiculously
+# slow with UHD 3.10 because the init of the X310 is also extremely slow. Total time
+# may be about 45 minutes.
+UHD_VERSION_REQUIRES_DELAY=True # default to True since latest version requires delay
+USRP_MODEL_REQUIRES_DELAY=None # To be determined later
+if ADD_DELAY_BT_TESTS==None: # No need to check if being forced
+    # pkg-config is simple, but only works if uhd-devel is installed
+    #from subprocess import call
+    #if call(['pkg-config','uhd','--atleast-version=3.10'])==0:
+    # Instead, we'll use rpm
+    from rpm import TransactionSet, RPMTAG_NAME, RPMTAG_VERSION
+    from distutils.version import LooseVersion
+    UHD_3_10 = LooseVersion('3.10')
+    UHD_INSTALLED = LooseVersion('3.10') # assume 3.10 unless discover otherwise
+    ts = TransactionSet()
+    mi = ts.dbMatch(RPMTAG_NAME,'uhd')
+    for h in mi:
+	UHD_INSTALLED = LooseVersion(h[RPMTAG_VERSION])
+	break
+    if UHD_INSTALLED >= UHD_3_10:
+	UHD_VERSION_REQUIRES_DELAY = True
+    else:
+	UHD_VERSION_REQUIRES_DELAY = False
+
 ########################################
 #   END Custom Override Functions      #
 ########################################
@@ -379,6 +414,7 @@ class FrontendTunerTests(fe.FrontendTunerTests):
 
     @classmethod
     def devicePostLaunch(cls):
+        # This will only evaluate True once at most since it will populate capabilities list
         if 'USRP' == DUT[:4] and len(dut_config[DUT]['capabilities'])==0:
             device_channels = cls._query( ('device_channels',) )['device_channels']
             if DEBUG_LEVEL >= 4:
@@ -402,13 +438,41 @@ class FrontendTunerTests(fe.FrontendTunerTests):
                 }
                 dut_config[DUT]['capabilities'].append(chan_capabilities)
 
+        global USRP_MODEL_REQUIRES_DELAY
+        if 'USRP' == DUT[:4] and USRP_MODEL_REQUIRES_DELAY == None:
+            # get prop from usrp that has type = x300, etc
+            try:
+                device_mbs = cls._query( ('device_motherboards',) )['device_motherboards']
+                if DEBUG_LEVEL >= 4:
+                    from pprint import pprint as pp
+                    print 'device motherboards: '
+                    pp(device_mbs)
+
+                for mb in device_mbs:
+                    if 'X3' == mb['device_motherboards::mb_name'][:2].upper():
+                        USRP_MODEL_REQUIRES_DELAY = True
+                    else:
+                        USRP_MODEL_REQUIRES_DELAY = False
+            except:
+                USRP_MODEL_REQUIRES_DELAY=True
+
     # Use functions below to add pre-/post-release commands if your device has special shutdown requirements
     @classmethod
     def devicePreRelease(self):
         pass
     @classmethod
     def devicePostRelease(self):
-        pass
+        global DELAY_BT_TESTS, ADD_DELAY_BT_TESTS, UHD_VERSION_REQUIRES_DELAY, USRP_MODEL_REQUIRES_DELAY
+        if DELAY_BT_TESTS > 0: #No need to add delay if set to 0
+            if ADD_DELAY_BT_TESTS==True:
+                print 'DELAY: adding user forced delay'
+                time.sleep(DELAY_BT_TESTS)
+            elif ADD_DELAY_BT_TESTS==False:
+                print 'DELAY: user forced no delay'
+            elif UHD_VERSION_REQUIRES_DELAY and USRP_MODEL_REQUIRES_DELAY:
+                print 'DELAY: adding uhd+usrp required delay'
+                time.sleep(DELAY_BT_TESTS)
+
 
 if __name__ == '__main__':
     fe.set_debug_level(DEBUG_LEVEL)
