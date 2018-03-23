@@ -2242,8 +2242,8 @@ double USRP_UHD_i::getTunerOutputSampleRate(const std::string& allocation_id) {
 float USRP_UHD_i::auto_gain() {
     size_t  samplesRequired = 500; // not configurable; hard-coded to 500, which is really 250 complex samples
     size_t  samplesFound    = 0;
-    size_t  guardBits       = 1;   // not configurable; hard-coded to 1
-    long    maxBits         = (device_rx_mode == "8bit") ? 8-guardBits : 16-guardBits;
+    long    maxBits         = (device_rx_mode == "8bit") ? 8 : 16;
+    maxBits -= this->rx_autogain_guard_bits;
     short   maxValue        = (device_rx_mode == "8bit") ? 0x7f  : 0x7fff;
     short   maxValueFound   = 0; // max value in current buffer
     long    bitsInUse       = 0;

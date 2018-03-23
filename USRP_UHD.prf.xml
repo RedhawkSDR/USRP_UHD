@@ -503,4 +503,10 @@ False: Does not need control and can just attach to any currently tasked device 
     <kind kindtype="property"/>
     <action type="external"/>
   </simple>
+  <simple id="rx_autogain_guard_bits" mode="readwrite" name="rx_autogain_guard_bits" type="ushort">
+    <value>1</value>
+    <units>bits</units>
+    <kind kindtype="property"/>
+    <action type="external"/>
+  </simple>
 </properties>

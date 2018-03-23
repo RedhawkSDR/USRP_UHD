@@ -216,6 +216,33 @@ void USRP_UHD_base::loadProperties()
                 "external",
                 "property");
 
+    addProperty(rx_autogain_on_tune,
+                false,
+                "rx_autogain_on_tune",
+                "rx_autogain_on_tune",
+                "readwrite",
+                "",
+                "external",
+                "property");
+
+    addProperty(trigger_rx_autogain,
+                false,
+                "trigger_rx_autogain",
+                "trigger_rx_autogain",
+                "readwrite",
+                "",
+                "external",
+                "property");
+
+    addProperty(rx_autogain_guard_bits,
+                1,
+                "rx_autogain_guard_bits",
+                "rx_autogain_guard_bits",
+                "readwrite",
+                "bits",
+                "external",
+                "property");
+
     addProperty(sdds_settings,
                 sdds_settings_struct(),
                 "sdds_settings",
@@ -293,23 +320,6 @@ void USRP_UHD_base::loadProperties()
                 "",
                 "external",
                 "property");
-    addProperty(rx_autogain_on_tune,
-                false,
-                "rx_autogain_on_tune",
-                "rx_autogain_on_tune",
-                "readwrite",
-                "",
-                "external",
-                "property");
-    addProperty(trigger_rx_autogain,
-                false,
-                "trigger_rx_autogain",
-                "trigger_rx_autogain",
-                "readwrite",
-                "",
-                "external",
-                "property");
-
 
 }
 
@@ -407,18 +417,18 @@ void USRP_UHD_base::removeListener(const std::string& listen_alloc_id)
     ExtendedCF::UsesConnectionSequence_var tmp;
     // Check to see if port "dataShort_out" has a connection for this listener
     tmp = this->dataShort_out->connections();
-    for (unsigned int i=0; i<this->dataShort_out->connections()->length(); i++) {
-        std::string connection_id = ossie::corba::returnString(tmp[i].connectionId);
+    for (unsigned int i=0; i<tmp->length(); i++) {
+        const char* connection_id = tmp[i].connectionId;
         if (connection_id == listen_alloc_id) {
-            this->dataShort_out->disconnectPort(connection_id.c_str());
+            this->dataShort_out->disconnectPort(connection_id);
         }
     }
     // Check to see if port "dataSDDS_out" has a connection for this listener
     tmp = this->dataSDDS_out->connections();
-    for (unsigned int i=0; i<this->dataSDDS_out->connections()->length(); i++) {
-        std::string connection_id = ossie::corba::returnString(tmp[i].connectionId);
+    for (unsigned int i=0; i<tmp->length(); i++) {
+        const char* connection_id = tmp[i].connectionId;
         if (connection_id == listen_alloc_id) {
-            this->dataSDDS_out->disconnectPort(connection_id.c_str());
+            this->dataSDDS_out->disconnectPort(connection_id);
         }
     }
     this->connectionTableChanged(&old_table, &this->connectionTable);
