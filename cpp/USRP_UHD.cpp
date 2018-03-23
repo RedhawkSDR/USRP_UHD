@@ -223,31 +223,29 @@ int USRP_UHD_i::serviceFunctionReceive(){
             continue;
 
         //Check to see if channel is allocated before acquiring lock
-        if (getControlAllocationId(tuner_id).empty()){
+        if (getControlAllocationId(tuner_id).empty()) {
             continue;
         }
 
         scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
 
         //Check to make sure channel is allocated still
-        if (getControlAllocationId(tuner_id).empty()){
+        if (getControlAllocationId(tuner_id).empty()) {
             continue;
         }
 
         //Check to see if channel output is enabled
-        if (!frontend_tuner_status[tuner_id].enabled){
+        if (!frontend_tuner_status[tuner_id].enabled) {
             continue;
         }
 
         long num_samps = usrpReceive(tuner_id, 1.0); // 1 second timeout
 
         /* if auto-gain enabled, push data to gain method */
-        if(trigger_rx_autogain)
-        {
-            float newGain = auto_gain();
-            if( newGain > 0 )
-                updateDeviceRxGain( newGain, false );
-            trigger_rx_autogain = false;
+        if (trigger_rx_autogain) {
+            float newGain = auto_gain(); // auto_gain will set trigger to false if appropriate
+            if(newGain != device_rx_gain_global)
+                updateDeviceRxGain(newGain, false);
         }
 
         // if the buffer is full OR (overflow occurred and buffer isn't empty), push buffer out as is and move to next buffer
@@ -510,7 +508,7 @@ void USRP_UHD_i::deviceEnable(frontend_tuner_status_struct_struct &fts, size_t t
     // Start Streaming Now
     scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
     if (rx_autogain_on_tune)
-    	trigger_rx_autogain = true;
+        trigger_rx_autogain = true;
     usrpEnable(tuner_id); // modifies fts.enabled appropriately
 }
 void USRP_UHD_i::deviceDisable(frontend_tuner_status_struct_struct &fts, size_t tuner_id){
@@ -583,10 +581,10 @@ bool USRP_UHD_i::deviceSetTuning(const frontend::frontend_tuner_allocation_struc
             }
             // If sample rate is zero (don't care) then use bandwidth for tuner request
             if(frontend::floatingPointCompare(request.sample_rate,0) <= 0) {
-            	opt_sr = optimizeRate(request.bandwidth, tuner_id);
-            	LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|sr requested 0|opt_sr="<<opt_sr<<"  requested_bw="<<request.bandwidth)
+                opt_sr = optimizeRate(request.bandwidth, tuner_id);
+                LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|sr requested 0|opt_sr="<<opt_sr<<"  requested_bw="<<request.bandwidth)
             } else {
-			    opt_sr = optimizeRate(request.sample_rate, tuner_id);
+                opt_sr = optimizeRate(request.sample_rate, tuner_id);
             }
             opt_bw = optimizeBandwidth(request.bandwidth, tuner_id);
             LOG_DEBUG(USRP_UHD_i,"deviceSetTuning|opt_sr="<<opt_sr<<"  opt_bw="<<opt_bw)
@@ -1502,9 +1500,9 @@ void USRP_UHD_i::updateDeviceRxGain(double gain, bool lock) {
 
     for(size_t tuner_id = 0; tuner_id < frontend_tuner_status.size(); tuner_id++){
         if(frontend_tuner_status[tuner_id].tuner_type == "RX_DIGITIZER"){
-        	if (lock) {
-        		scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
-        	}
+            if (lock) {
+                scoped_tuner_lock tuner_lock(usrp_tuners[tuner_id].lock);
+            }
             usrp_device_ptr->set_rx_gain(gain,frontend_tuner_status[tuner_id].tuner_number);
             frontend_tuner_status[tuner_id].gain = usrp_device_ptr->get_rx_gain(frontend_tuner_status[tuner_id].tuner_number);
             LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ << " Updated Gain. New gain is " << frontend_tuner_status[tuner_id].gain);
@@ -2045,7 +2043,7 @@ void USRP_UHD_i::setTunerCenterFrequency(const std::string& allocation_id, doubl
             frontend_tuner_status[idx].center_frequency = usrp_device_ptr->get_rx_freq(frontend_tuner_status[idx].tuner_number);
             usrp_tuners[idx].update_sri = true;
             if (rx_autogain_on_tune)
-            	trigger_rx_autogain = true;
+                trigger_rx_autogain = true;
             // re-enable
             if (is_tuner_enabled)
                 usrpEnable(idx);
@@ -2196,7 +2194,7 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
             LOG_DEBUG(USRP_UHD_i,"setTunerOutputSampleRate|REQ_SR=" << sr << " OPT_SR=" << opt_sr << " TUNER_SR=" << frontend_tuner_status[idx].sample_rate);
             usrp_tuners[idx].update_sri = true;
             if (rx_autogain_on_tune)
-            	trigger_rx_autogain = true;
+                trigger_rx_autogain = true;
 
         } else if (frontend_tuner_status[idx].tuner_type == "TX") {
 
@@ -2224,7 +2222,8 @@ void USRP_UHD_i::setTunerOutputSampleRate(const std::string& allocation_id, doub
     exclusive_lock lock(prop_lock);
     updateDeviceInfo();
 }
-double USRP_UHD_i::getTunerOutputSampleRate(const std::string& allocation_id){
+
+double USRP_UHD_i::getTunerOutputSampleRate(const std::string& allocation_id) {
     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__);
     long idx = getTunerMapping(allocation_id);
     if (idx < 0) throw FRONTEND::FrontendException("Invalid allocation id");
@@ -2233,132 +2232,87 @@ double USRP_UHD_i::getTunerOutputSampleRate(const std::string& allocation_id){
 }
 
 /*----------------------------------------------------------------------------
-
         This is a very simple auto-gain function.
-
         Notes:
-
-             1. it looks like it will work for either byte or short data,
-                but it won't.  It will only work for short data at the
-                moment since this is all I care about in the SKQ-realm.
-
-             2. No attempt was made to calculate any real power measurement;
-                only the bit 'loading' of a sample over a sample set.
-
-             3. I am attempting to do something what will work for all
-                daughtercard types in all modes.
-
-             4. I am assuming that this is just being run at startup of
-                each tuner and not continuously.
-
-             5. I am assuming that the initial buffer of data is long
-                enough to exemplify the full signalling environment.
-
-			 6. The data in the outputBuffer may change, but will always
-			    characterize the input voltages as long as it is running
-				so we don't worry about it here.
-
+             1. Calculates the bit 'loading' of a sample over a sample set.
+             2. Kept generic to work for all daughtercard types in all modes.
+             3. Calculates instantaneous values; not continuously calculating.
+             4. Requires minimum of 500 samples (250 complex samples)
  ----------------------------------------------------------------------------*/
-float USRP_UHD_i::auto_gain()
-{
+float USRP_UHD_i::auto_gain() {
+    size_t  samplesRequired = 500; // not configurable; hard-coded to 500, which is really 250 complex samples
+    size_t  samplesFound    = 0;
+    size_t  guardBits       = 1;   // not configurable; hard-coded to 1
+    long    maxBits         = (device_rx_mode == "8bit") ? 8-guardBits : 16-guardBits;
+    short   maxValue        = (device_rx_mode == "8bit") ? 0x7f  : 0x7fff;
+    short   maxValueFound   = 0; // max value in current buffer
+    long    bitsInUse       = 0;
+    float   maxGain         = 0;
+    float   minGain         = 0;
+    float   gainAdjust      = 0;
+    float   newGain         = device_rx_gain_global;
 
-	float newGain = 0.0;
-	unsigned maxValue = device_rx_mode == "8bit" ? pow(2, 8-1) : pow(2, 16-1);
-	float realMax = 0;
-	float maxGain = 0;
-	float minGain = 0;
+    // Find max input value of all current receive buffers
+    for (size_t tuner_id=0; tuner_id<usrp_tuners.size(); tuner_id++) {
+        if (frontend_tuner_status[tuner_id].tuner_type =="RX_DIGITIZER") {
+            // If the tuner is a receiver, save off the max and min gain for later.
+            // All receive channels should have the same min and max gain
+            maxGain = device_channels[tuner_id].gain_max;
+            minGain = device_channels[tuner_id].gain_min;
+            samplesFound += usrp_tuners[tuner_id].buffer_size;
+            for(size_t sampleNum=0 ; sampleNum<usrp_tuners[tuner_id].buffer_size; sampleNum++) {
+                // max value tracker. Look at Real and Complex values.
+                if((short)(usrp_tuners[tuner_id].output_buffer[sampleNum]) > maxValueFound)
+                    maxValueFound = (short)(usrp_tuners[tuner_id].output_buffer[sampleNum]);
+            }
+        }
+    }
 
-	// Find max input value of all current receive buffers
-	for (uint tuner_id =0; tuner_id<usrp_tuners.size();tuner_id++) {
-		if (frontend_tuner_status[tuner_id].tuner_type =="RX_DIGITIZER") {
-			// If the tuner is a receiver, safe off the max and min gain for later. All receive channels should have the same min and max gain
-			maxGain= device_channels[tuner_id].gain_max;
-			minGain	= device_channels[tuner_id].gain_min;
-			for( size_t sample = 0 ; sample < usrp_tuners[tuner_id].buffer_capacity ; sample++ )
-			{
-			   /* temporary max value tracker. Look at Real and Complex values. */
-			   if( (int16_t)(usrp_tuners[tuner_id].output_buffer[sample]) > realMax )
-					realMax = (int16_t)(usrp_tuners[tuner_id].output_buffer[sample]);
+    // require buffer to have sufficient number of samples before turning off trigger
+    LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " Got " << samplesFound << " of " << samplesRequired << " samples required for auto-gain calculation.");
+    if (samplesFound >= samplesRequired) {
+        LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " Max value in buffer is " << maxValueFound << " compared to a fully loaded max of " << maxValue);
+        trigger_rx_autogain = false;
+    } else {
+        LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " Not enough samples to calculate auto-gain; not resetting trigger yet.");
+        trigger_rx_autogain = true;
+        return device_rx_gain_global; // no change yet
+    }
 
-			 }
-		}
-	}
-     LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" Found a Max value in buffer of  " << realMax <<" compared to a fully loaded max of "<<maxValue )
+    // compute bits currently in use
+    for (int32_t m=maxValueFound; m; m>>=1) bitsInUse++; // floor(log10(maxValueFound) / log10(2)) + 1
+    bitsInUse++; // add 1 to account for negative range as well
+    LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " Max value in buffer uses " << bitsInUse <<" bits compared to " << maxBits << " available non-guard bits");
 
+    // compute gain adjustment
+    gainAdjust = (maxBits-bitsInUse) * 6; // x6 to convert bits to dB
+    LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " Gain adjustment calculated is " << gainAdjust);
 
-	 /*-----------------------------------------------------
-		just figure out how far below the max possible
-		value the actual max is and then set the gain
-		accordingly
-	  -----------------------------------------------------*/
-	  float delta = maxValue - realMax;
-	  float gain_adjust  = 0;
-	  if( delta < 1 )
-	  {
-		  LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__ <<" gain is too high already.")
-		gain_adjust = -6;
-	  }
-	  else
-	  {
-		/* always saturate up to 1 guard bit */
-		gain_adjust = floor(log10(delta) / log10(2) - 1);
-	  }
-
-	  /* convert bits into db */
-	  gain_adjust *= 6.0;
-	  LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" gain_adjust calculated " <<gain_adjust )
-	  /* adjust gain according to actual device min and max values */
-	  {
-
-		/*--------------------
-		  case: increase gain
-		 --------------------*/
-		  LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" device_rx_gain_global " <<device_rx_gain_global << " maxGain " << maxGain)
-		if( (gain_adjust > 0) && (device_rx_gain_global < maxGain ) )
-		{
-			/* check limits */
-			if( device_rx_gain_global < maxGain )
-			{
-				/* make sure we update all status properties */
-				newGain = fmin( gain_adjust + device_rx_gain_global, maxGain );
-				LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" Increasing Gain to " <<newGain )
-			}
-			else
-			{
-				/* input signal too low.  can't increase gain further */
-				LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" input too low.  no more gain possible! " )
-				newGain = 0.0;
-			}
-		}
-		/*--------------------
-		  case: reduce gain
-		 --------------------*/
-		else if( (gain_adjust < 0 ) && (device_rx_gain_global > 0) )
-		{
-
-			/* check limits */
-			if( device_rx_gain_global > 0.0 )
-			{
-				/* make sure we update all status properties */
-				newGain = fmax( gain_adjust + device_rx_gain_global, minGain );
-				LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" Decreasing Gain to " <<newGain )
-			}
-			else
-			{
-				/* input signal too hot.  can't reduce gain further */
-				LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" input too hot.  no more attenuation possible!")
-				newGain = 0.0;
-			}
-		}
-		/*--------------------
-		  case: success
-		 --------------------*/
-		else
-		{
-			LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" Can't make any gain Adjustments")
-		}
-	}
-
-	return newGain;
+    // adjust gain according to actual device min and max values
+    if (gainAdjust > 0) { // increase gain if possible
+        LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " device_rx_gain_global=" << device_rx_gain_global << "  maxGain=" << maxGain);
+        if (device_rx_gain_global < maxGain) {
+            newGain = fmin(gainAdjust+device_rx_gain_global, maxGain);
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" Increasing Gain to " << newGain);
+        } else {
+            // input signal too low.  can't increase gain further
+            LOG_DEBUG(USRP_UHD_i,__PRETTY_FUNCTION__<<" Input too low; no more gain possible!");
+            newGain = maxGain;
+        }
+    } else if (gainAdjust < 0) { // reduce gain if possible
+        LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " device_rx_gain_global=" << device_rx_gain_global << "  minGain=" << minGain);
+        if (device_rx_gain_global > minGain) {
+            newGain = fmax(gainAdjust+device_rx_gain_global, minGain);
+            LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " Decreasing Gain to " << newGain);
+        } else {
+            // input signal too hot.  can't reduce gain further
+            LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " Input too high; no more attenuation possible!");
+            newGain = minGain;
+        }
+    } else { // no change necessary
+        LOG_DEBUG(USRP_UHD_i, __PRETTY_FUNCTION__ << " No gain adjustments necessary.");
+        newGain = device_rx_gain_global;
+    }
+    return newGain;
 }
 
