@@ -504,6 +504,7 @@ False: Does not need control and can just attach to any currently tasked device 
     <action type="external"/>
   </simple>
   <simple id="rx_autogain_guard_bits" mode="readwrite" name="rx_autogain_guard_bits" type="ushort">
+    <description>The number of bits in the sample that are not used to express the value. This allows the signal strength to change without saturating the ADC, and prevents clipping.</description>
     <value>1</value>
     <units>bits</units>
     <kind kindtype="property"/>
